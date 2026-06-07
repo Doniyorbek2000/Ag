@@ -46,9 +46,30 @@ hisobi avtomatik yaratiladi — production'da darhol parolni almashtiring.
 - `GET /api/admin/broadcasts` — yuborilgan xabarnomalar
 - `POST /api/admin/broadcasts` — barcha/tarif bo'yicha xabarnoma yuborish
 
-## Eslatma
+## Google Play xaridlarini server tomonida tasdiqlash
 
-`POST /api/subscriptions/purchase` da Google Play xaridini haqiqiy tasdiqlash
-uchun Google Play Developer API (`purchases.subscriptions.get`) chaqiruvini
-ulash kerak — hozirgi holatda token saqlanadi, lekin tashqi tekshiruv
-qo'shilmagan (`TODO` belgilangan).
+`POST /api/subscriptions/purchase` endi Google Play Developer API
+(`purchases.subscriptions.get`, `src/services/googlePlay.js`) orqali haqiqiy
+tekshiruvni qo'llab-quvvatlaydi: token yaroqsiz yoki to'lov holati faol
+bo'lmasa, faollashtirish `402` bilan rad etiladi.
+
+Buni yoqish uchun (faqat Play Console hisobi egasi bajara oladigan qadamlar):
+
+1. Google Cloud Console'da loyihangizga bog'langan **service account**
+   yarating va undan JSON kalit faylini yuklab oling.
+2. Play Console → **Setup → API access** bo'limida shu service account'ga
+   "View financial data" (yoki "Manage orders and subscriptions") huquqini
+   bering va ilova bilan bog'lang.
+3. JSON kalit faylini serverga joylashtiring va `.env`da ko'rsating:
+   ```
+   GOOGLE_PLAY_PACKAGE_NAME=com.admai.app
+   GOOGLE_PLAY_SERVICE_ACCOUNT_KEY=./google-play-service-account.json
+   ```
+4. Serverni qayta ishga tushiring — `googlePlay.isConfigured()` `true`
+   qaytarganda barcha xaridlar avtomatik ravishda Google Play API orqali
+   tekshiriladi (muddati ham `expiryTimeMillis`dan olinadi).
+
+Bu o'zgaruvchilar sozlanmagan bo'lsa, server ogohlantirish chiqaradi va
+mijoz yuborgan kvitansiyaga ishonib faollashtirishni davom ettiradi (joriy
+xulq-atvor) — chunki bu kalitni faqat hisob egasi yarata oladi va undan
+tashqarida ta'minlab bo'lmaydi.

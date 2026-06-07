@@ -1,11 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../services/wake_word_service.dart';
+import '../services/background_service.dart';
 import '../router/app_router.dart';
 
 /// Bridges [WakeWordService] (continuous "Hey ADM AI" listening) with
 /// navigation: when the phrase is detected, the app is routed to the
 /// voice screen so the user can speak their command immediately.
+///
+/// While enabled, this also keeps [AdmBackgroundService]'s persistent
+/// foreground notification (microphone-type) running. The actual listen
+/// loop still runs on the main isolate (it needs the app's GoRouter), but
+/// the foreground service raises the process's OS priority and signals to
+/// the system that the mic is in active use -- the standard mitigation
+/// always-listening assistants use to survive the screen turning off.
+/// Some OEM battery managers may still suspend the mic regardless; there
+/// is no app-level way to fully override that.
 class WakeWordState {
   final bool enabled;
   final bool isListening;
@@ -53,6 +63,8 @@ class WakeWordController extends StateNotifier<WakeWordState> {
     final box = Hive.box('settings');
     await box.put(_settingsKey, true);
 
+    await AdmBackgroundService.startVoiceService();
+
     await _service.start(
       locale: locale,
       onWakeWord: () {
@@ -70,6 +82,7 @@ class WakeWordController extends StateNotifier<WakeWordState> {
     final box = Hive.box('settings');
     await box.put(_settingsKey, false);
     await _service.stop();
+    await AdmBackgroundService.stopVoiceService();
     state = state.copyWith(enabled: false, isListening: false);
   }
 

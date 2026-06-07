@@ -16,7 +16,7 @@ class AdmBackgroundService {
         isForegroundMode: true,
         notificationChannelId: 'adm_ai_service',
         initialNotificationTitle: 'ADM AI',
-        initialNotificationContent: 'Ovozli yordamchi faol',
+        initialNotificationContent: '"Hey ADM AI" so\'zini tinglamoqda...',
         foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(
@@ -83,11 +83,19 @@ class AdmBackgroundService {
 
   static Future<void> startVoiceService() async {
     final service = FlutterBackgroundService();
-    await service.startService();
+    if (!await service.isRunning()) {
+      await service.startService();
+    }
   }
 
   static Future<void> stopVoiceService() async {
     final service = FlutterBackgroundService();
-    service.invoke('stopService');
+    if (await service.isRunning()) {
+      service.invoke('stopService');
+    }
+  }
+
+  static Future<bool> isVoiceServiceRunning() {
+    return FlutterBackgroundService().isRunning();
   }
 }

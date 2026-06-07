@@ -3,15 +3,19 @@ const { v4: uuidv4 } = require('uuid');
 const { z } = require('zod');
 const db = require('../db');
 const { authRequired } = require('../middleware/auth');
+const googlePlay = require('../services/googlePlay');
 
 const router = express.Router();
 router.use(authRequired);
 
 const PLAN_PRICES = { free: 0, pro: 29900, ultra: 59900, vip: 149900 };
 
-// Verifies an in-app purchase receipt (Google Play) and activates the plan.
-// In production this should call the Google Play Developer API to validate
-// the purchase token before granting entitlements.
+// Verifies an in-app purchase receipt and activates the plan. When
+// GOOGLE_PLAY_SERVICE_ACCOUNT_KEY is configured, the purchase token is
+// validated against the Google Play Developer API (see ../services/googlePlay)
+// before any entitlement is granted; unverifiable or inactive purchases are
+// rejected with 402. Without that key, the purchase is logged and trusted
+// from the client receipt -- set the env var to enable real verification.
 const purchaseSchema = z.object({
   plan: z.enum(['pro', 'ultra', 'vip']),
   provider: z.enum(['google_play', 'manual']).default('google_play'),
@@ -19,17 +23,42 @@ const purchaseSchema = z.object({
   productId: z.string().optional(),
 });
 
-router.post('/purchase', (req, res) => {
+router.post('/purchase', async (req, res) => {
   const parsed = purchaseSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Xarid ma\'lumotlari noto\'g\'ri' });
 
-  const { plan, provider, purchaseToken } = parsed.data;
+  const { plan, provider, purchaseToken, productId } = parsed.data;
 
-  // TODO: integrate Google Play Developer API purchases.subscriptions.get
-  // to verify purchaseToken authenticity before granting access.
+  let expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  if (provider === 'google_play') {
+    if (!purchaseToken || !productId) {
+      return res.status(400).json({ error: 'purchaseToken va productId talab qilinadi' });
+    }
+
+    if (googlePlay.isConfigured()) {
+      const result = await googlePlay.verifySubscriptionPurchase({
+        packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.admai.app',
+        productId,
+        purchaseToken,
+      });
+
+      if (!result || !result.valid) {
+        return res.status(402).json({ error: 'Xarid Google Play tomonidan tasdiqlanmadi' });
+      }
+
+      if (result.expiryTimeMillis) {
+        expiresAt = new Date(result.expiryTimeMillis).toISOString();
+      }
+    } else {
+      console.warn(
+        '[subscriptions] GOOGLE_PLAY_SERVICE_ACCOUNT_KEY sozlanmagan -- ' +
+        'xarid mijoz tomonidan yuborilgan kvitansiyaga ishonib faollashtirilmoqda'
+      );
+    }
+  }
 
   const id = uuidv4();
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   db.prepare(`
     INSERT INTO subscriptions (id, user_id, plan, status, provider, provider_ref, expires_at, amount)
