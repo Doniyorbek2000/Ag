@@ -104,27 +104,11 @@ kerakligini tushuntir).
 
       final data = response.data;
       final content = data['content'][0]['text'] as String;
-
-      ActionCommand? action;
-      final actionMatch = RegExp(r'\{"action":\s*"(\w+)".*?\}', dotAll: true)
-          .firstMatch(content);
-      if (actionMatch != null) {
-        try {
-          final jsonStr = actionMatch.group(0)!;
-          final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
-          action = ActionCommand(
-            type: parsed['action'] as String,
-            params: (parsed['params'] as Map<String, dynamic>?) ?? {},
-          );
-        } catch (_) {}
-      }
-
-      final cleanContent =
-          content.replaceAll(RegExp(r'\{"action".*?\}', dotAll: true), '').trim();
+      final parsed = parseActionFromContent(content);
 
       return AiResponse(
-        text: cleanContent,
-        action: action,
+        text: parsed.cleanText,
+        action: parsed.action,
         inputTokens: data['usage']?['input_tokens'] as int? ?? 0,
         outputTokens: data['usage']?['output_tokens'] as int? ?? 0,
       );
@@ -187,6 +171,37 @@ kerakligini tushuntir).
       _logger.e('Stream error: $e');
     }
   }
+}
+
+/// Extracts an embedded `{"action": "...", "params": {...}}` JSON block from
+/// an AI text response (if present) and returns the text with that block
+/// stripped out. Pulled out as a pure top-level function so the parsing
+/// logic can be unit-tested without the network layer.
+ParsedAiContent parseActionFromContent(String content) {
+  ActionCommand? action;
+  final actionMatch = RegExp(r'\{"action":\s*"(\w+)".*?\}', dotAll: true).firstMatch(content);
+  if (actionMatch != null) {
+    try {
+      final jsonStr = actionMatch.group(0)!;
+      final parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
+      action = ActionCommand(
+        type: parsed['action'] as String,
+        params: (parsed['params'] as Map<String, dynamic>?) ?? {},
+      );
+    } catch (_) {}
+  }
+
+  final cleanText =
+      content.replaceAll(RegExp(r'\{"action".*?\}', dotAll: true), '').trim();
+
+  return ParsedAiContent(cleanText: cleanText, action: action);
+}
+
+class ParsedAiContent {
+  final String cleanText;
+  final ActionCommand? action;
+
+  const ParsedAiContent({required this.cleanText, this.action});
 }
 
 class AiResponse {
