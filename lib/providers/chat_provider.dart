@@ -4,6 +4,7 @@ import '../models/chat_message.dart';
 import '../services/ai_service.dart';
 import '../services/action_executor.dart';
 import 'auth_provider.dart';
+import 'locale_provider.dart';
 
 class ChatState {
   final List<ChatMessage> messages;
@@ -90,6 +91,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       final response = await _aiService.sendMessage(
         message: text,
         conversationHistory: history,
+        responseLanguage: _ref.read(appLanguageProvider).code,
       );
 
       final aiMsg = ChatMessage(

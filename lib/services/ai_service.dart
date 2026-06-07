@@ -77,10 +77,17 @@ javob bermay, API kalitini Sozlamalar → Integratsiyalarda kiritish
 kerakligini tushuntir).
 ''';
 
+  static const Map<String, String> _languageInstructions = {
+    'uz': 'Foydalanuvchiga O\'zbek tilida javob ber.',
+    'ru': 'Отвечай пользователю на русском языке.',
+    'en': 'Respond to the user in English.',
+  };
+
   Future<AiResponse> sendMessage({
     required String message,
     List<Map<String, String>> conversationHistory = const [],
     String? contextInfo,
+    String responseLanguage = 'uz',
   }) async {
     try {
       final messages = [
@@ -88,9 +95,14 @@ kerakligini tushuntir).
         {'role': 'user', 'content': message},
       ];
 
-      final systemContent = contextInfo != null
-          ? '$_systemPrompt\n\nQO\'SHIMCHA KONTEKST:\n$contextInfo'
-          : _systemPrompt;
+      var systemContent = _systemPrompt;
+      final languageInstruction = _languageInstructions[responseLanguage];
+      if (languageInstruction != null && responseLanguage != 'uz') {
+        systemContent = '$systemContent\n\nTIL: $languageInstruction';
+      }
+      if (contextInfo != null) {
+        systemContent = '$systemContent\n\nQO\'SHIMCHA KONTEKST:\n$contextInfo';
+      }
 
       final response = await _dio.post(
         '/messages',

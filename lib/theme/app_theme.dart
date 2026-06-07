@@ -20,6 +20,21 @@ class AppTheme {
   static const Color warning = Color(0xFFFFAB40);
   static const Color error = Color(0xFFFF5252);
 
+  // Light theme surface colors
+  static const Color lightBg = Color(0xFFF5F6FB);
+  static const Color lightCard = Color(0xFFFFFFFF);
+  static const Color lightSurface = Color(0xFFEEF0F8);
+  static const Color lightElevated = Color(0xFFE4E7F5);
+  static const Color lightTextPrimary = Color(0xFF1A1A2E);
+  static const Color lightTextSecondary = Color(0xFF55577A);
+  static const Color lightTextHint = Color(0xFF9698B5);
+
+  static const LinearGradient lightBgGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFFF7F8FD), Color(0xFFEEF0F8)],
+  );
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -180,5 +195,150 @@ class AppTheme {
         ),
         dividerColor: Colors.white.withOpacity(0.08),
         iconTheme: const IconThemeData(color: textSecondary),
+      );
+
+  static ThemeData get lightTheme => ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        colorScheme: const ColorScheme.light(
+          primary: primaryBlue,
+          secondary: primaryPurple,
+          tertiary: accentCyan,
+          surface: lightCard,
+          background: lightBg,
+          error: error,
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+          onSurface: lightTextPrimary,
+          onBackground: lightTextPrimary,
+        ),
+        scaffoldBackgroundColor: lightBg,
+        fontFamily: 'Poppins',
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            color: lightTextPrimary,
+            letterSpacing: -0.5,
+          ),
+          displayMedium: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            color: lightTextPrimary,
+          ),
+          headlineLarge: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            color: lightTextPrimary,
+          ),
+          headlineMedium: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: lightTextPrimary,
+          ),
+          titleLarge: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: lightTextPrimary,
+          ),
+          titleMedium: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: lightTextPrimary,
+          ),
+          bodyLarge: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: lightTextSecondary,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: lightTextSecondary,
+          ),
+          bodySmall: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+            color: lightTextHint,
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: lightTextPrimary,
+          ),
+          iconTheme: IconThemeData(color: lightTextPrimary),
+        ),
+        cardTheme: CardThemeData(
+          color: lightCard,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: Colors.black.withOpacity(0.06),
+              width: 1,
+            ),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: lightSurface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(
+              color: Colors.black.withOpacity(0.06),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: primaryBlue, width: 1.5),
+          ),
+          hintStyle: const TextStyle(color: lightTextHint, fontFamily: 'Poppins'),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: lightCard,
+          selectedItemColor: primaryBlue,
+          unselectedItemColor: lightTextHint,
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          selectedLabelStyle: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontFamily: 'Poppins',
+            fontSize: 11,
+          ),
+        ),
+        dividerColor: Colors.black.withOpacity(0.06),
+        iconTheme: const IconThemeData(color: lightTextSecondary),
       );
 }

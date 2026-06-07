@@ -13,6 +13,7 @@ import '../screens/bookkeeping_screen.dart';
 import '../screens/call_center_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
+import '../screens/legal_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/admin/admin_login_screen.dart';
@@ -83,6 +84,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/subscription',
         builder: (ctx, state) => const SubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/legal/privacy-policy',
+        builder: (ctx, state) =>
+            const LegalScreen(document: LegalDocument.privacyPolicy),
+      ),
+      GoRoute(
+        path: '/legal/terms-of-use',
+        builder: (ctx, state) =>
+            const LegalScreen(document: LegalDocument.termsOfUse),
       ),
       GoRoute(
         path: '/admin/login',

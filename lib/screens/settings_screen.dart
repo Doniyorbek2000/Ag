@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/wake_word_provider.dart';
+import '../providers/theme_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/ai_service.dart';
 import '../services/telegram_service.dart';
 import '../services/whatsapp_service.dart';
@@ -179,6 +181,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildPreferencesSection() {
     final wakeWord = ref.watch(wakeWordProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final language = ref.watch(appLanguageProvider);
 
     return _SettingsSection(
       title: 'Sozlamalar',
@@ -206,16 +210,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => ref.read(wakeWordProvider.notifier).requestBatteryExemption(),
           ),
         _SettingsTile(
+          icon: Icons.dark_mode_outlined,
+          title: 'Mavzu',
+          subtitle: switch (themeMode) {
+            ThemeMode.light => 'Yorug\'',
+            ThemeMode.dark => 'Tungi',
+            ThemeMode.system => 'Tizimga mos',
+          },
+          onTap: () => _showThemePicker(themeMode),
+        ),
+        _SettingsTile(
           icon: Icons.language_outlined,
-          title: 'Til',
-          subtitle: 'O\'zbekcha',
-          onTap: () {},
+          title: 'Yordamchi tili',
+          subtitle: '${language.flag} ${language.label}',
+          onTap: () => _showLanguagePicker(language),
         ),
         _SettingsTile(
           icon: Icons.record_voice_over_outlined,
           title: 'Ovoz tili',
-          subtitle: 'uz-UZ',
-          onTap: () {},
+          subtitle: language.speechLocale,
+          onTap: () => _showLanguagePicker(language),
         ),
         _SettingsTile(
           icon: Icons.notifications_outlined,
@@ -245,12 +259,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SettingsTile(
           icon: Icons.description_outlined,
           title: 'Foydalanish shartlari',
-          onTap: () {},
+          onTap: () => context.push('/legal/terms-of-use'),
         ),
         _SettingsTile(
           icon: Icons.privacy_tip_outlined,
           title: 'Maxfiylik siyosati',
-          onTap: () {},
+          onTap: () => context.push('/legal/privacy-policy'),
         ),
         _SettingsTile(
           icon: Icons.bug_report_outlined,
@@ -298,6 +312,103 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: AppTheme.primaryBlue)),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showThemePicker(ThemeMode current) async {
+    final options = <ThemeMode, (String, IconData)>{
+      ThemeMode.system: ('Tizimga mos', Icons.brightness_auto_outlined),
+      ThemeMode.light: ('Yorug\'', Icons.light_mode_outlined),
+      ThemeMode.dark: ('Tungi', Icons.dark_mode_outlined),
+    };
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Mavzuni tanlang',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
+            ),
+            for (final entry in options.entries)
+              ListTile(
+                leading: Icon(entry.value.$2,
+                    color: entry.key == current
+                        ? AppTheme.primaryBlue
+                        : AppTheme.textHint),
+                title: Text(entry.value.$1,
+                    style: const TextStyle(color: Colors.white, fontSize: 14)),
+                trailing: entry.key == current
+                    ? const Icon(Icons.check, color: AppTheme.primaryBlue)
+                    : null,
+                onTap: () async {
+                  await ref.read(themeModeProvider.notifier).setThemeMode(entry.key);
+                  if (mounted) Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showLanguagePicker(AppLanguage current) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Yordamchi tilini tanlang',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600)),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'AI javoblari va ovozli buyruqlar shu tilda ishlaydi',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final lang in AppLanguage.all)
+              ListTile(
+                leading: Text(lang.flag, style: const TextStyle(fontSize: 22)),
+                title: Text(lang.label,
+                    style: const TextStyle(color: Colors.white, fontSize: 14)),
+                subtitle: Text(lang.speechLocale,
+                    style: const TextStyle(color: AppTheme.textHint, fontSize: 11)),
+                trailing: lang.code == current.code
+                    ? const Icon(Icons.check, color: AppTheme.primaryBlue)
+                    : null,
+                onTap: () async {
+                  await ref.read(appLanguageProvider.notifier).setLanguage(lang);
+                  if (mounted) Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }

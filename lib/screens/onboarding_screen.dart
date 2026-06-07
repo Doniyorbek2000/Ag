@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +20,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _currentPage = 0;
   final _nameController = TextEditingController();
   final _apiKeyController = TextEditingController();
+  bool _agreedToTerms = false;
 
   final List<OnboardingPage> _pages = [
     const OnboardingPage(
@@ -66,6 +68,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _complete() async {
+    if (!_agreedToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Davom etish uchun Foydalanish shartlari va Maxfiylik '
+            'siyosatiga rozilik bildiring',
+          ),
+          backgroundColor: AppTheme.warning,
+        ),
+      );
+      return;
+    }
     final name = _nameController.text.trim();
     if (name.isNotEmpty) {
       await ref.read(authProvider.notifier).setName(name);
@@ -271,7 +285,62 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    value: _agreedToTerms,
+                    activeColor: AppTheme.primaryBlue,
+                    onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: 1.5,
+                            color: Colors.white.withOpacity(0.7),
+                          ),
+                          children: [
+                            const TextSpan(text: 'Men '),
+                            TextSpan(
+                              text: 'Foydalanish shartlari',
+                              style: const TextStyle(
+                                color: AppTheme.primaryBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => context.push('/legal/terms-of-use'),
+                            ),
+                            const TextSpan(text: ' va '),
+                            TextSpan(
+                              text: 'Maxfiylik siyosati',
+                              style: const TextStyle(
+                                color: AppTheme.primaryBlue,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => context.push('/legal/privacy-policy'),
+                            ),
+                            const TextSpan(text: ' bilan tanishdim va roziman.'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           GradientButton(
             text: 'Boshlash',
             onPressed: _complete,

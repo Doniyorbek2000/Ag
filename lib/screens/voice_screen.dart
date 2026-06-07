@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../services/voice_service.dart';
 import '../providers/chat_provider.dart';
+import '../providers/locale_provider.dart';
 
 class VoiceScreen extends ConsumerStatefulWidget {
   final bool autoListen;
@@ -37,7 +38,9 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
       duration: const Duration(milliseconds: 800),
     );
 
-    _voiceService.initialize();
+    _voiceService.initialize().then((_) {
+      _voiceService.setLanguage(ref.read(appLanguageProvider).speechLocale);
+    });
     _voiceService.addListener(_onVoiceChanged);
 
     if (widget.autoListen) {
@@ -304,28 +307,23 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
   }
 
   Widget _buildLanguageSelector() {
+    final current = ref.watch(appLanguageProvider);
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _LangChip(
-            label: "O'zbekcha",
-            locale: 'uz-UZ',
-            voiceService: _voiceService,
-          ),
-          const SizedBox(width: 8),
-          _LangChip(
-            label: 'Русский',
-            locale: 'ru-RU',
-            voiceService: _voiceService,
-          ),
-          const SizedBox(width: 8),
-          _LangChip(
-            label: 'English',
-            locale: 'en-US',
-            voiceService: _voiceService,
-          ),
+          for (final lang in AppLanguage.all) ...[
+            if (lang != AppLanguage.all.first) const SizedBox(width: 8),
+            _LangChip(
+              language: lang,
+              selected: lang.code == current.code,
+              onSelected: () async {
+                await ref.read(appLanguageProvider.notifier).setLanguage(lang);
+                _voiceService.setLanguage(lang.speechLocale);
+              },
+            ),
+          ],
         ],
       ),
     );
@@ -333,30 +331,38 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
 }
 
 class _LangChip extends StatelessWidget {
-  final String label;
-  final String locale;
-  final VoiceService voiceService;
+  final AppLanguage language;
+  final bool selected;
+  final VoidCallback onSelected;
 
   const _LangChip({
-    required this.label,
-    required this.locale,
-    required this.voiceService,
+    required this.language,
+    required this.selected,
+    required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => voiceService.setLanguage(locale),
+      onTap: onSelected,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppTheme.bgCard,
+          color: selected ? AppTheme.primaryBlue.withOpacity(0.25) : AppTheme.bgCard,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+          border: Border.all(
+            color: selected
+                ? AppTheme.primaryBlue
+                : AppTheme.primaryBlue.withOpacity(0.3),
+          ),
         ),
         child: Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          '${language.flag} ${language.label}',
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? Colors.white : AppTheme.textSecondary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ),
     );
