@@ -73,3 +73,48 @@ Bu o'zgaruvchilar sozlanmagan bo'lsa, server ogohlantirish chiqaradi va
 mijoz yuborgan kvitansiyaga ishonib faollashtirishni davom ettiradi (joriy
 xulq-atvor) — chunki bu kalitni faqat hisob egasi yarata oladi va undan
 tashqarida ta'minlab bo'lmaydi.
+
+## Production'ga joylashtirish (Docker)
+
+Backend Docker konteynerida ishga tushirish uchun tayyor:
+
+```bash
+cd backend
+cp .env.example .env   # JWT_SECRET, ADMIN_BOOTSTRAP_PASSWORD va h.k. ni to'ldiring
+docker compose up -d --build
+```
+
+Bu nima qiladi:
+- `Dockerfile` — Node 22 asosida konteyner qurib, `better-sqlite3`ning
+  native qismini build vaqtida kompilyatsiya qiladi
+- `docker-compose.yml` — konteynerni ishga tushiradi, `.env`dagi maxfiy
+  qiymatlarni o'tkazadi va SQLite fayli uchun **named volume** (`admai-data`)
+  biriktiradi — konteyner qayta qurilganda yoki yangilanganda ma'lumotlar
+  bazasi saqlanib qoladi
+- O'rnatilgan **healthcheck** — `GET /health` orqali konteyner holatini
+  kuzatadi (`docker compose ps` da `healthy`/`unhealthy` ko'rinadi)
+
+Konteyner loglarini kuzatish: `docker compose logs -f api`
+
+## Monitoring va abuse-kuzatuv
+
+Har bir HTTP so'rov `requestLogger` middleware orqali bitta JSON qatorida
+`stdout`ga yoziladi (`{ts, method, path, status, durationMs, ip, userId,
+level}`) — bu Docker/`journald`/har qanday log agregatori (Loki, ELK,
+CloudWatch va h.k.) bilan to'g'ridan-to'g'ri ishlaydi, qo'shimcha
+sozlashsiz. `level: "error"` — 5xx, `level: "warn"` — 4xx va rate-limit
+hodisalarini bildiradi.
+
+Rate-limit chegaralariga urilgan so'rovlar alohida `event:
+"rate_limit_exceeded"` yozuvi sifatida `console.warn`ga chiqariladi —
+IP va foydalanuvchi ID bilan birga, shubhali (bruteforce/abuse) trafikni
+log orqali kuzatish uchun.
+
+Joriy chegaralar (`src/app.js`):
+- Umumiy `/api/*`: 15 daqiqada 300 so'rov
+- `/api/auth/login`, `/api/auth/register`: 15 daqiqada 20 urinish
+- `/api/users/me/usage/increment`: 1 daqiqada 30 so'rov
+
+Production uchun tavsiya: log oqimini Grafana Loki yoki shunga o'xshash
+xizmatga yo'naltiring va `event: "rate_limit_exceeded"` bo'yicha alert
+(masalan, bitta IP'dan 10 daqiqada 5+ hodisa) sozlang.

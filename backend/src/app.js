@@ -7,19 +7,23 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscriptions');
+const { requestLogger, logRateLimitHit } = require('./middleware/requestLogger');
 
 function createApp() {
   const app = express();
 
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
+  app.use(requestLogger);
 
   const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
     standardHeaders: true,
     legacyHeaders: false,
+    handler: logRateLimitHit('Juda ko\'p so\'rov yuborildi. Birozdan so\'ng qayta urinib ko\'ring.'),
   });
   app.use('/api', generalLimiter);
 
@@ -30,7 +34,7 @@ function createApp() {
     limit: 20,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Juda ko\'p urinish. Birozdan so\'ng qayta urinib ko\'ring.' },
+    handler: logRateLimitHit('Juda ko\'p urinish. Birozdan so\'ng qayta urinib ko\'ring.'),
   });
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
@@ -40,7 +44,7 @@ function createApp() {
     limit: 30,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'So\'rovlar soni chegarasiga yetdingiz. Bir daqiqadan so\'ng qayta urinib ko\'ring.' },
+    handler: logRateLimitHit('So\'rovlar soni chegarasiga yetdingiz. Bir daqiqadan so\'ng qayta urinib ko\'ring.'),
   });
   app.use('/api/users/me/usage/increment', usageLimiter);
 
