@@ -15,6 +15,13 @@ import '../screens/settings_screen.dart';
 import '../screens/subscription_screen.dart';
 import '../screens/chat_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/admin/admin_login_screen.dart';
+import '../screens/admin/admin_shell.dart';
+import '../screens/admin/admin_dashboard_screen.dart';
+import '../screens/admin/admin_users_screen.dart';
+import '../screens/admin/admin_subscriptions_screen.dart';
+import '../screens/admin/admin_tickets_screen.dart';
+import '../screens/admin/admin_broadcasts_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -73,6 +80,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/subscription',
         builder: (ctx, state) => const SubscriptionScreen(),
+      ),
+      GoRoute(
+        path: '/admin/login',
+        builder: (ctx, state) => const AdminLoginScreen(),
+      ),
+      ShellRoute(
+        builder: (ctx, state, child) => AdminShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/admin',
+            builder: (ctx, state) => const AdminDashboardScreen(),
+          ),
+          GoRoute(
+            path: '/admin/users',
+            builder: (ctx, state) => const AdminUsersScreen(),
+          ),
+          GoRoute(
+            path: '/admin/subscriptions',
+            builder: (ctx, state) => const AdminSubscriptionsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/tickets',
+            builder: (ctx, state) => const AdminTicketsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/broadcasts',
+            builder: (ctx, state) => const AdminBroadcastsScreen(),
+          ),
+        ],
       ),
     ],
   );

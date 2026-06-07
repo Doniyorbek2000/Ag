@@ -227,6 +227,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           title: 'Xato haqida xabar berish',
           onTap: () {},
         ),
+        _SettingsTile(
+          icon: Icons.admin_panel_settings_outlined,
+          title: 'Admin panel',
+          subtitle: 'Boshqaruv paneliga kirish',
+          onTap: () => context.push('/admin/login'),
+        ),
       ],
     );
   }
