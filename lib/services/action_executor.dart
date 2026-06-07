@@ -3,6 +3,10 @@ import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:logger/logger.dart';
+import 'telegram_service.dart';
+import 'whatsapp_service.dart';
+import 'weather_service.dart';
+import 'news_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
@@ -53,6 +57,10 @@ class ActionExecutor {
         return _openGallery();
       case 'OPEN_MAPS':
         return _openMaps(params['location'] as String? ?? '');
+      case 'GET_WEATHER':
+        return _getWeather(params['city'] as String? ?? '');
+      case 'GET_NEWS':
+        return _getNews(params['topic'] as String?);
       default:
         return ActionResult(
           success: false,
@@ -226,22 +234,62 @@ class ActionExecutor {
   }
 
   Future<ActionResult> _sendTelegram(String contact, String message) async {
+    final telegram = TelegramService();
+    if (telegram.isConfigured && message.isNotEmpty) {
+      try {
+        await telegram.sendToContact(contact: contact, text: message);
+        return ActionResult(
+          success: true,
+          message: '"$contact" ga Telegram orqali xabar yuborildi',
+        );
+      } on TelegramException catch (e) {
+        _logger.w('Telegram avto-yuborish ishlamadi: $e');
+        // Fall through to opening the app — bot can't reach this contact yet.
+      }
+    }
+
     final uri = Uri.parse('https://t.me/$contact');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return ActionResult(success: true, message: 'Telegram ochildi');
+      return ActionResult(
+        success: true,
+        message: telegram.isConfigured
+            ? 'Bu kontakt botga hali yozmagan, shuning uchun Telegram qo\'lda ochildi'
+            : 'Telegram ochildi (avtomatik yuborish uchun Sozlamalar → Integratsiyalarda bot tokenini kiriting)',
+      );
     }
     return ActionResult(success: false, message: 'Telegram topilmadi');
   }
 
   Future<ActionResult> _sendWhatsApp(String phone, String message) async {
     final cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
+    final whatsapp = WhatsAppService();
+
+    if (await whatsapp.isConfigured && message.isNotEmpty) {
+      try {
+        await whatsapp.sendTextMessage(phone: cleaned, text: message);
+        return ActionResult(
+          success: true,
+          message: '$cleaned ga WhatsApp orqali xabar yuborildi',
+        );
+      } on WhatsAppException catch (e) {
+        _logger.w('WhatsApp avto-yuborish ishlamadi: $e');
+        // Fall through to opening the app — likely outside the 24h window
+        // or the recipient hasn't messaged the business number yet.
+      }
+    }
+
     final uri = Uri.parse(
       'https://wa.me/$cleaned?text=${Uri.encodeComponent(message)}',
     );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return ActionResult(success: true, message: 'WhatsApp ochildi');
+      return ActionResult(
+        success: true,
+        message: await whatsapp.isConfigured
+            ? 'Avtomatik yuborib bo\'lmadi (24 soatlik oyna yopiq), shuning uchun WhatsApp qo\'lda ochildi'
+            : 'WhatsApp ochildi (avtomatik yuborish uchun Sozlamalar → Integratsiyalarda Business hisobni ulang)',
+      );
     }
     return ActionResult(success: false, message: 'WhatsApp topilmadi');
   }
@@ -288,6 +336,48 @@ class ActionExecutor {
       return ActionResult(success: true, message: 'Galereya ochildi');
     } catch (e) {
       return ActionResult(success: false, message: 'Galereya ochishda xato');
+    }
+  }
+
+  Future<ActionResult> _getWeather(String city) async {
+    if (city.isEmpty) {
+      return ActionResult(success: false, message: 'Qaysi shahar uchun ob-havoni aytay?');
+    }
+    try {
+      final info = await WeatherService().getCurrentWeather(city);
+      return ActionResult(success: true, message: info.toSpokenSummary(), data: info);
+    } on WeatherException catch (e) {
+      return ActionResult(
+        success: false,
+        message: e.message.contains('sozlanmagan')
+            ? 'Ob-havo ma\'lumotlari uchun Sozlamalar → Integratsiyalarda OpenWeatherMap API kalitini kiriting'
+            : e.message,
+      );
+    }
+  }
+
+  Future<ActionResult> _getNews(String? topic) async {
+    try {
+      final articles = await NewsService().getTopHeadlines(topic: topic);
+      if (articles.isEmpty) {
+        return ActionResult(success: true, message: 'Hozircha yangiliklar topilmadi');
+      }
+      final summary = articles
+          .take(5)
+          .map((a) => '• ${a.title} (${a.source})')
+          .join('\n');
+      return ActionResult(
+        success: true,
+        message: 'So\'nggi yangiliklar:\n$summary',
+        data: articles,
+      );
+    } on NewsException catch (e) {
+      return ActionResult(
+        success: false,
+        message: e.message.contains('sozlanmagan')
+            ? 'Yangiliklar uchun Sozlamalar → Integratsiyalarda GNews API kalitini kiriting'
+            : e.message,
+      );
     }
   }
 

@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../theme/app_theme.dart';
 import '../services/action_executor.dart';
 import '../services/ai_service.dart';
+import '../services/call_screening_service.dart';
 import '../widgets/gradient_button.dart';
 
 class CallCenterScreen extends ConsumerStatefulWidget {
@@ -20,10 +21,20 @@ class _CallCenterScreenState extends ConsumerState<CallCenterScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _executor = ActionExecutor();
+  final _screeningService = CallScreeningService();
   final _dialController = TextEditingController();
   final _scriptController = TextEditingController();
+  final _blockNumberController = TextEditingController();
   List<Contact> _contacts = [];
   bool _loadingContacts = false;
+
+  bool _screeningSupported = false;
+  bool _screeningRoleHeld = false;
+  bool _quietMode = false;
+  bool _contactsOnly = false;
+  bool _loadingScreening = true;
+  List<String> _blockedNumbers = [];
+  List<Map<String, dynamic>> _screeningLog = [];
 
   final List<CallLog> _callLogs = [
     CallLog(name: 'Ahmadjon', number: '+998901234567', type: CallType.outgoing, time: '10:30'),
@@ -35,8 +46,9 @@ class _CallCenterScreenState extends ConsumerState<CallCenterScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadContacts();
+    _loadScreeningState();
   }
 
   @override
@@ -44,7 +56,71 @@ class _CallCenterScreenState extends ConsumerState<CallCenterScreen>
     _tabController.dispose();
     _dialController.dispose();
     _scriptController.dispose();
+    _blockNumberController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadScreeningState() async {
+    setState(() => _loadingScreening = true);
+    final supported = await _screeningService.isSupported();
+    final roleHeld = await _screeningService.isRoleHeld();
+    final quietMode = await _screeningService.getQuietModeEnabled();
+    final contactsOnly = await _screeningService.getAllowContactsOnly();
+    final blocked = await _screeningService.getBlockedNumbers();
+    final log = await _screeningService.getLog();
+    if (!mounted) return;
+    setState(() {
+      _screeningSupported = supported;
+      _screeningRoleHeld = roleHeld;
+      _quietMode = quietMode;
+      _contactsOnly = contactsOnly;
+      _blockedNumbers = blocked;
+      _screeningLog = log;
+      _loadingScreening = false;
+    });
+  }
+
+  Future<void> _requestScreeningRole() async {
+    final granted = await _screeningService.requestRole();
+    if (!mounted) return;
+    setState(() => _screeningRoleHeld = granted);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? 'AI qo\'ng\'iroq skrining yoqildi'
+              : 'Skrining ruxsati berilmadi. Tizim dialogida ADM AI ni tanlang.',
+        ),
+        backgroundColor: granted ? AppTheme.success : AppTheme.error,
+      ),
+    );
+  }
+
+  Future<void> _toggleQuietMode(bool value) async {
+    setState(() => _quietMode = value);
+    await _screeningService.setQuietModeEnabled(value);
+  }
+
+  Future<void> _toggleContactsOnly(bool value) async {
+    setState(() => _contactsOnly = value);
+    await _screeningService.setAllowContactsOnly(value);
+  }
+
+  Future<void> _addBlockedNumber() async {
+    final number = _blockNumberController.text.trim();
+    if (number.isEmpty) return;
+    await _screeningService.blockNumber(number);
+    _blockNumberController.clear();
+    final blocked = await _screeningService.getBlockedNumbers();
+    if (!mounted) return;
+    setState(() => _blockedNumbers = blocked);
+  }
+
+  Future<void> _removeBlockedNumber(String number) async {
+    await _screeningService.unblockNumber(number);
+    final blocked = await _screeningService.getBlockedNumbers();
+    if (!mounted) return;
+    setState(() => _blockedNumbers = blocked);
   }
 
   Future<void> _loadContacts() async {
@@ -154,10 +230,12 @@ O\'zbek tilida yoz.
                 indicatorColor: AppTheme.primaryBlue,
                 labelColor: AppTheme.primaryBlue,
                 unselectedLabelColor: AppTheme.textHint,
+                isScrollable: true,
                 tabs: const [
                   Tab(text: 'Terish'),
                   Tab(text: 'Kontaktlar'),
                   Tab(text: 'AI Skript'),
+                  Tab(text: 'AI Skrining'),
                 ],
               ),
               Expanded(
@@ -167,6 +245,7 @@ O\'zbek tilida yoz.
                     _buildDialer(),
                     _buildContacts(),
                     _buildAiScript(),
+                    _buildScreening(),
                   ],
                 ),
               ),
@@ -442,6 +521,235 @@ O\'zbek tilida yoz.
           ),
           const SizedBox(height: 12),
           ..._callLogs.map((log) => _buildCallLogItem(log)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScreening() {
+    if (_loadingScreening) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryBlue),
+      );
+    }
+
+    if (!_screeningSupported) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('🚫', style: TextStyle(fontSize: 48)),
+              const SizedBox(height: 16),
+              const Text(
+                'AI qo\'ng\'iroq skrining qo\'llab-quvvatlanmaydi',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Bu funksiya Android 10 (API 29) va undan yuqori versiyalarda ishlaydi.',
+                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadScreeningState,
+      color: AppTheme.primaryBlue,
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text(
+            'AI qo\'ng\'iroq skrining',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Kiruvchi qo\'ng\'iroqlarni tizim darajasida tekshiradi: bloklangan '
+            'raqamlarni rad etadi, notanish raqamlarni "Tinch rejim"da '
+            'ovozsizlantiradi. Android faqat bitta ilovaga bu rolni beradi va '
+            'buni tizim dialogida o\'zingiz tasdiqlashingiz kerak.',
+            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, height: 1.5),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _screeningRoleHeld ? Icons.verified_user : Icons.shield_outlined,
+                  color: _screeningRoleHeld ? AppTheme.success : AppTheme.textHint,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _screeningRoleHeld
+                        ? 'Skrining yoqilgan — ADM AI qo\'ng\'iroqlarni nazorat qilmoqda'
+                        : 'Skrining yoqilmagan',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+                if (!_screeningRoleHeld)
+                  TextButton(
+                    onPressed: _requestScreeningRole,
+                    child: const Text('Yoqish', style: TextStyle(color: AppTheme.primaryBlue)),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.bgCard,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: _quietMode,
+                  onChanged: _toggleQuietMode,
+                  activeColor: AppTheme.primaryBlue,
+                  title: const Text('Tinch rejim', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  subtitle: const Text(
+                    'Kontaktlarda yo\'q raqamlarni ovozsizlantirish',
+                    style: TextStyle(color: AppTheme.textHint, fontSize: 12),
+                  ),
+                ),
+                const Divider(height: 1, color: Colors.white12),
+                SwitchListTile(
+                  value: _contactsOnly,
+                  onChanged: _toggleContactsOnly,
+                  activeColor: AppTheme.primaryBlue,
+                  title: const Text('Faqat kontaktlar', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  subtitle: const Text(
+                    'Kontaktlarda yo\'q barcha qo\'ng\'iroqlarni ovozsizlantirish',
+                    style: TextStyle(color: AppTheme.textHint, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Bloklangan raqamlar',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _blockNumberController,
+                  keyboardType: TextInputType.phone,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    hintText: '+998901234567',
+                    hintStyle: TextStyle(color: AppTheme.textHint, fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              IconButton(
+                onPressed: _addBlockedNumber,
+                icon: const Icon(Icons.add_circle, color: AppTheme.primaryBlue, size: 28),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (_blockedNumbers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Bloklangan raqamlar yo\'q',
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+              ),
+            )
+          else
+            ..._blockedNumbers.map(
+              (number) => Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgCard,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.block, color: AppTheme.error, size: 20),
+                  title: Text(number, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                  trailing: IconButton(
+                    onPressed: () => _removeBlockedNumber(number),
+                    icon: const Icon(Icons.close, color: AppTheme.textHint, size: 18),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+          const Text(
+            'Skrining tarixi',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+          ),
+          const SizedBox(height: 12),
+          if (_screeningLog.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                'Hali hech qanday qo\'ng\'iroq tekshirilmagan',
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+              ),
+            )
+          else
+            ..._screeningLog.map((entry) => _buildScreeningLogItem(entry)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScreeningLogItem(Map<String, dynamic> entry) {
+    final decision = entry['decision'] as String? ?? '';
+    final labels = {
+      'rejected_blocked': ('Rad etildi (bloklangan)', AppTheme.error, Icons.block),
+      'silenced_not_contact': ('Ovozsizlantirildi (notanish)', AppTheme.accentGold, Icons.volume_off),
+      'silenced_quiet_mode': ('Ovozsizlantirildi (tinch rejim)', AppTheme.accentGold, Icons.volume_off),
+      'allowed': ('Ruxsat berildi', AppTheme.success, Icons.check_circle),
+    };
+    final (label, color, icon) = labels[decision] ?? (decision, AppTheme.textHint, Icons.help_outline);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.bgCard,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry['number'] as String? ?? '',
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                Text(label, style: TextStyle(color: color, fontSize: 11)),
+              ],
+            ),
+          ),
+          Text(
+            entry['timestamp'] as String? ?? '',
+            style: const TextStyle(color: AppTheme.textHint, fontSize: 11),
+          ),
         ],
       ),
     );

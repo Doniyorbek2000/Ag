@@ -67,6 +67,14 @@ Amallar turlari:
 - SEND_TELEGRAM: {contact: "ism", message: "matn"}
 - SEND_WHATSAPP: {contact: "ism", message: "matn"}
 - SEARCH_YOUTUBE: {query: "video nomi"}
+- GET_WEATHER: {city: "shahar nomi"}
+- GET_NEWS: {topic: "mavzu (ixtiyoriy)"}
+
+GET_WEATHER va GET_NEWS amallari foydalanuvchi sozlagan tashqi API orqali
+real ma'lumot qaytaradi (agar API kaliti sozlanmagan bo'lsa, tizim buni
+foydalanuvchiga aytadi — bunday holda o'zingning bilim bazangdan taxminiy
+javob bermay, API kalitini Sozlamalar → Integratsiyalarda kiritish
+kerakligini tushuntir).
 ''';
 
   Future<AiResponse> sendMessage({

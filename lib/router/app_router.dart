@@ -75,7 +75,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/voice',
-        builder: (ctx, state) => const VoiceScreen(),
+        builder: (ctx, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return VoiceScreen(autoListen: extra?['autoListen'] == true);
+        },
       ),
       GoRoute(
         path: '/subscription',

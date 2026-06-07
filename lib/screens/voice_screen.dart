@@ -9,7 +9,9 @@ import '../services/voice_service.dart';
 import '../providers/chat_provider.dart';
 
 class VoiceScreen extends ConsumerStatefulWidget {
-  const VoiceScreen({super.key});
+  final bool autoListen;
+
+  const VoiceScreen({super.key, this.autoListen = false});
 
   @override
   ConsumerState<VoiceScreen> createState() => _VoiceScreenState();
@@ -37,6 +39,12 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
 
     _voiceService.initialize();
     _voiceService.addListener(_onVoiceChanged);
+
+    if (widget.autoListen) {
+      // "Hey ADM AI" woke the app up — start listening for the actual
+      // command right away instead of waiting for a tap.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _startListening());
+    }
   }
 
   void _onVoiceChanged() {

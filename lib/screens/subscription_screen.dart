@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_theme.dart';
 import '../models/subscription_model.dart';
 import '../providers/auth_provider.dart';
+import '../services/purchase_service.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -14,6 +16,32 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   int _selectedPlanIndex = 1;
+  final PurchaseService _purchaseService = PurchaseService();
+
+  @override
+  void initState() {
+    super.initState();
+    _purchaseService.initialize(
+      onActivated: (plan) async {
+        await ref.read(authProvider.notifier).upgradePlan(plan);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Obuna tasdiqlandi va faollashtirildi!'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+        }
+      },
+      onError: (message) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message), backgroundColor: AppTheme.error),
+          );
+        }
+      },
+    );
+  }
 
   final Map<SubscriptionPlan, Map<String, String>> _planMeta = {
     SubscriptionPlan.free: {
@@ -33,6 +61,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       'icon': '👑',
     },
   };
+
+  @override
+  void dispose() {
+    _purchaseService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -414,6 +448,23 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       return;
     }
 
+    // Try real Google Play Billing first — only succeeds on a signed
+    // release build with the product registered in Play Console.
+    if (await _purchaseService.isAvailable) {
+      final productId = PurchaseService.productIds[plan.plan];
+      final products = await _purchaseService.loadProducts();
+      final product = products.where((p) => p.id == productId).firstOrNull;
+
+      if (product != null) {
+        final launched = await _purchaseService.buy(plan.plan, product);
+        if (launched) return; // Play billing sheet handles the rest via the purchase stream
+      }
+    }
+
+    _showDemoActivationDialog(context, plan);
+  }
+
+  void _showDemoActivationDialog(BuildContext context, SubscriptionPlanModel plan) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -424,7 +475,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
         ),
         content: Text(
           'Oyiga ${plan.price} so\'m to\'lanadi.\n'
-          'Hozircha demo rejimida faollashtiriladi.',
+          'Google Play to\'lov tizimi mavjud emas (sinov/debug build yoki '
+          'mahsulot Play Console\'da ro\'yxatdan o\'tmagan), shuning uchun '
+          'reja qo\'lda faollashtiriladi — bu rejim haqiqiy to\'lovni '
+          'tasdiqlamaydi.',
           style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
