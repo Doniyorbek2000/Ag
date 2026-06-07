@@ -47,6 +47,7 @@ Future<void> _initHiveAdapters() async {
   await Hive.openBox('chats');
   await Hive.openBox('bookkeeping');
   await Hive.openBox('contacts_cache');
+  await Hive.openBox('memory');
 }
 
 class AdmAiApp extends ConsumerWidget {

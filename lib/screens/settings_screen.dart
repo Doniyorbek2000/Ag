@@ -7,6 +7,7 @@ import '../providers/wake_word_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/ai_service.dart';
+import '../services/memory_service.dart';
 import '../services/telegram_service.dart';
 import '../services/whatsapp_service.dart';
 import '../services/weather_service.dart';
@@ -21,6 +22,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _apiKeyController = TextEditingController();
+  final _memory = MemoryService();
   bool _showApiKey = false;
 
   @override
@@ -243,6 +245,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           subtitle: 'Barmoq izi / Yuz ID',
           onTap: () {},
         ),
+        _SettingsTile(
+          icon: Icons.psychology_outlined,
+          title: 'Yordamchi xotirasi',
+          subtitle: '${_memory.getAll().length} ta ma\'lumot eslab qolingan',
+          onTap: _showMemorySheet,
+        ),
       ],
     );
   }
@@ -409,6 +417,104 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _showMemorySheet() async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgCard,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final facts = _memory.getAll();
+          return SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Yordamchi xotirasi',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Suhbatda "eslab qol" deb so\'ralgan ma\'lumotlar shu yerda '
+                        'saqlanadi va har bir suhbatda ADM AI ga eslatib turiladi.',
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (facts.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text(
+                        'Hozircha hech narsa eslab qolinmagan',
+                        style: TextStyle(color: AppTheme.textHint, fontSize: 13),
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final entry in facts.entries)
+                            ListTile(
+                              leading: const Icon(Icons.lightbulb_outline,
+                                  color: AppTheme.accentGold, size: 20),
+                              title: Text(entry.key,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+                              subtitle: Text(entry.value,
+                                  style: const TextStyle(
+                                      color: AppTheme.textSecondary, fontSize: 12)),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    color: AppTheme.error, size: 20),
+                                onPressed: () async {
+                                  await _memory.forget(entry.key);
+                                  setSheetState(() {});
+                                  if (mounted) setState(() {});
+                                },
+                              ),
+                            ),
+                          if (facts.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: TextButton.icon(
+                                onPressed: () async {
+                                  await _memory.forgetAll();
+                                  setSheetState(() {});
+                                  if (mounted) setState(() {});
+                                },
+                                icon: const Icon(Icons.delete_sweep_outlined,
+                                    color: AppTheme.error, size: 18),
+                                label: const Text('Barchasini o\'chirish',
+                                    style: TextStyle(color: AppTheme.error, fontSize: 13)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

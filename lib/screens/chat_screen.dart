@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../providers/chat_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/connectivity_provider.dart';
 import '../models/chat_message.dart';
 import '../services/voice_service.dart';
 import '../widgets/chat_bubble.dart';
@@ -101,6 +102,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           child: Column(
             children: [
               _buildAppBar(context, user),
+              _buildOfflineBanner(),
               if (chatState.error != null) _buildErrorBanner(chatState.error!),
               Expanded(
                 child: chatState.messages.isEmpty
@@ -194,6 +196,37 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               );
             },
             icon: const Icon(Icons.delete_outline, color: AppTheme.textHint),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    final isOnlineAsync = ref.watch(isOnlineProvider);
+    final isOnline = isOnlineAsync.asData?.value ??
+        ref.watch(initialOnlineProvider).asData?.value ??
+        true;
+    if (isOnline) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.warning.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.warning.withOpacity(0.4)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_off_outlined, color: AppTheme.warning, size: 18),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Offlayn rejim — faqat qo\'ng\'iroq, SMS va ilovalarni ochish '
+              'kabi buyruqlar ishlaydi. AI suhbat uchun internet kerak.',
+              style: TextStyle(color: Colors.white, fontSize: 12),
+            ),
           ),
         ],
       ),
