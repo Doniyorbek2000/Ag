@@ -30,6 +30,9 @@ flutter run
 
 API kalitni `Sozlamalar > AI Sozlamalar` bo'limidan kiritish mumkin (ixtiyoriy — bepul rejimda ham ishlaydi).
 
+Crash-reporting (Sentry) va analitika ixtiyoriy `SENTRY_DSN` compile-time
+o'zgaruvchisi orqali yoqiladi -- batafsil: [SENTRY_SETUP.md](SENTRY_SETUP.md).
+
 ## Loyiha tuzilishi
 
 ```

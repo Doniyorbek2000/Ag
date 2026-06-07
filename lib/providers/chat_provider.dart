@@ -7,6 +7,8 @@ import '../services/ai_service.dart';
 import '../services/action_executor.dart';
 import '../services/memory_service.dart';
 import '../services/offline_command_service.dart';
+import '../services/analytics_service.dart';
+import '../services/crash_reporting_service.dart';
 import 'auth_provider.dart';
 import 'locale_provider.dart';
 
@@ -109,6 +111,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       error: null,
     );
     await _persist(userMsg);
+    AnalyticsService().track('message_sent', {'isVoice': isVoice});
 
     final online = await _isOnline();
     if (!online) {
@@ -155,6 +158,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       ActionResult? actionResult;
       if (response.action != null) {
         actionResult = await _handleAction(response.action!);
+        AnalyticsService().track('action_executed', {
+          'type': response.action!.type,
+          'success': actionResult.success,
+        });
       }
 
       state = state.copyWith(
@@ -165,13 +172,15 @@ class ChatNotifier extends StateNotifier<ChatState> {
       await _persist(aiMsg);
 
       await _ref.read(authProvider.notifier).incrementDailyCall();
-    } on AiException catch (e) {
+    } on AiException catch (e, stackTrace) {
       state = state.copyWith(isLoading: false, error: e.message);
-    } catch (e) {
+      await CrashReportingService.recordError(e, stackTrace, context: 'chat_send_message');
+    } catch (e, stackTrace) {
       state = state.copyWith(
         isLoading: false,
         error: 'Xato yuz berdi: ${e.toString()}',
       );
+      await CrashReportingService.recordError(e, stackTrace, context: 'chat_send_message');
     }
   }
 

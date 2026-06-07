@@ -23,18 +23,40 @@ import '../screens/admin/admin_users_screen.dart';
 import '../screens/admin/admin_subscriptions_screen.dart';
 import '../screens/admin/admin_tickets_screen.dart';
 import '../screens/admin/admin_broadcasts_screen.dart';
+import '../services/analytics_service.dart';
+
+/// Reports each navigated route as a screen-view analytics event -- gives
+/// the local event log (and Sentry breadcrumbs) a picture of navigation
+/// flow without instrumenting every screen individually.
+class _AnalyticsNavigatorObserver extends NavigatorObserver {
+  void _track(Route<dynamic>? route) {
+    final name = route?.settings.name;
+    if (name != null && name.isNotEmpty) {
+      AnalyticsService().screenView(name);
+    }
+  }
+
+  @override
+  void didPush(Route route, Route? previousRoute) => _track(route);
+
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) => _track(newRoute);
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
     debugLogDiagnostics: false,
+    observers: [_AnalyticsNavigatorObserver()],
     routes: [
       GoRoute(
         path: '/splash',
+        name: 'splash',
         builder: (ctx, state) => const SplashScreen(),
       ),
       GoRoute(
         path: '/onboarding',
+        name: 'onboarding',
         builder: (ctx, state) => const OnboardingScreen(),
       ),
       ShellRoute(
@@ -42,40 +64,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
+            name: 'home',
             builder: (ctx, state) => const HomeScreen(),
           ),
           GoRoute(
             path: '/chat',
+            name: 'chat',
             builder: (ctx, state) => const ChatScreen(),
           ),
           GoRoute(
             path: '/apps',
+            name: 'apps',
             builder: (ctx, state) => const AppsHubScreen(),
           ),
           GoRoute(
             path: '/contacts',
+            name: 'contacts',
             builder: (ctx, state) => const ContactsScreen(),
           ),
           GoRoute(
             path: '/bookkeeping',
+            name: 'bookkeeping',
             builder: (ctx, state) => const BookkeepingScreen(),
           ),
           GoRoute(
             path: '/call-center',
+            name: 'call_center',
             builder: (ctx, state) => const CallCenterScreen(),
           ),
           GoRoute(
             path: '/settings',
+            name: 'settings',
             builder: (ctx, state) => const SettingsScreen(),
           ),
           GoRoute(
             path: '/profile',
+            name: 'profile',
             builder: (ctx, state) => const ProfileScreen(),
           ),
         ],
       ),
       GoRoute(
         path: '/voice',
+        name: 'voice',
         builder: (ctx, state) {
           final extra = state.extra as Map<String, dynamic>?;
           return VoiceScreen(autoListen: extra?['autoListen'] == true);
@@ -83,20 +114,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/subscription',
+        name: 'subscription',
         builder: (ctx, state) => const SubscriptionScreen(),
       ),
       GoRoute(
         path: '/legal/privacy-policy',
+        name: 'legal_privacy_policy',
         builder: (ctx, state) =>
             const LegalScreen(document: LegalDocument.privacyPolicy),
       ),
       GoRoute(
         path: '/legal/terms-of-use',
+        name: 'legal_terms_of_use',
         builder: (ctx, state) =>
             const LegalScreen(document: LegalDocument.termsOfUse),
       ),
       GoRoute(
         path: '/admin/login',
+        name: 'admin_login',
         builder: (ctx, state) => const AdminLoginScreen(),
       ),
       ShellRoute(
@@ -104,22 +139,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/admin',
+            name: 'admin_dashboard',
             builder: (ctx, state) => const AdminDashboardScreen(),
           ),
           GoRoute(
             path: '/admin/users',
+            name: 'admin_users',
             builder: (ctx, state) => const AdminUsersScreen(),
           ),
           GoRoute(
             path: '/admin/subscriptions',
+            name: 'admin_subscriptions',
             builder: (ctx, state) => const AdminSubscriptionsScreen(),
           ),
           GoRoute(
             path: '/admin/tickets',
+            name: 'admin_tickets',
             builder: (ctx, state) => const AdminTicketsScreen(),
           ),
           GoRoute(
             path: '/admin/broadcasts',
+            name: 'admin_broadcasts',
             builder: (ctx, state) => const AdminBroadcastsScreen(),
           ),
         ],

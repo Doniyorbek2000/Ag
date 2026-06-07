@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 import '../models/subscription_model.dart';
+import '../services/crash_reporting_service.dart';
+import '../services/analytics_service.dart';
 
 class UserState {
   final String? name;
@@ -75,12 +78,28 @@ class UserState {
 }
 
 class AuthNotifier extends StateNotifier<UserState> {
+  static const _anonIdKey = 'anon_user_id';
+  static const _uuid = Uuid();
+
   AuthNotifier() : super(const UserState()) {
     _loadFromStorage();
   }
 
+  /// Stable, anonymous per-install identifier used purely to correlate crash
+  /// reports across sessions -- never tied to name/email (no PII).
+  Future<String> _ensureAnonId(SharedPreferences prefs) async {
+    final existing = prefs.getString(_anonIdKey);
+    if (existing != null) return existing;
+    final generated = _uuid.v4();
+    await prefs.setString(_anonIdKey, generated);
+    return generated;
+  }
+
   Future<void> _loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
+    final anonId = await _ensureAnonId(prefs);
+    CrashReportingService.setUserId(anonId);
+
     state = state.copyWith(
       name: prefs.getString('user_name'),
       email: prefs.getString('user_email'),
@@ -95,24 +114,28 @@ class AuthNotifier extends StateNotifier<UserState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
     state = state.copyWith(name: name);
+    AnalyticsService().track('profile_name_set');
   }
 
   Future<void> setApiKey(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('api_key', key);
     state = state.copyWith(apiKey: key);
+    AnalyticsService().track('api_key_set');
   }
 
   Future<void> setOnboarded() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_onboarded', true);
     state = state.copyWith(isOnboarded: true);
+    AnalyticsService().track('onboarding_completed');
   }
 
   Future<void> upgradePlan(SubscriptionPlan plan) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('subscription_plan', plan.index);
     state = state.copyWith(plan: plan);
+    AnalyticsService().track('plan_upgraded', {'plan': plan.name});
   }
 
   Future<void> incrementDailyCall() async {
