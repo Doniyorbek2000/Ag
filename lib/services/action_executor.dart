@@ -1,0 +1,316 @@
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:logger/logger.dart';
+
+class ActionExecutor {
+  final Logger _logger = Logger();
+
+  static final ActionExecutor _instance = ActionExecutor._internal();
+  factory ActionExecutor() => _instance;
+  ActionExecutor._internal();
+
+  Future<ActionResult> execute(String actionType, Map<String, dynamic> params) async {
+    _logger.d('Executing action: $actionType with params: $params');
+
+    switch (actionType) {
+      case 'MAKE_CALL':
+        return _makeCall(params['phone'] as String? ?? '');
+      case 'SEND_SMS':
+        return _sendSms(
+          params['phone'] as String? ?? '',
+          params['message'] as String? ?? '',
+        );
+      case 'OPEN_APP':
+        return _openApp(params['app'] as String? ?? '');
+      case 'PLAY_MUSIC':
+        return _playMusic(params['query'] as String? ?? '');
+      case 'SEARCH_WEB':
+        return _searchWeb(params['query'] as String? ?? '');
+      case 'SET_ALARM':
+        return _setAlarm(
+          params['time'] as String? ?? '',
+          params['label'] as String? ?? 'ADM AI Eslatma',
+        );
+      case 'OPEN_SETTINGS':
+        return _openSettings(params['section'] as String? ?? '');
+      case 'SEND_TELEGRAM':
+        return _sendTelegram(
+          params['contact'] as String? ?? '',
+          params['message'] as String? ?? '',
+        );
+      case 'SEND_WHATSAPP':
+        return _sendWhatsApp(
+          params['phone'] as String? ?? '',
+          params['message'] as String? ?? '',
+        );
+      case 'SEARCH_YOUTUBE':
+        return _searchYouTube(params['query'] as String? ?? '');
+      case 'OPEN_CAMERA':
+        return _openCamera();
+      case 'OPEN_GALLERY':
+        return _openGallery();
+      case 'OPEN_MAPS':
+        return _openMaps(params['location'] as String? ?? '');
+      default:
+        return ActionResult(
+          success: false,
+          message: 'Noma\'lum buyruq: $actionType',
+        );
+    }
+  }
+
+  Future<ActionResult> _makeCall(String phone) async {
+    final status = await Permission.phone.request();
+    if (status.isDenied) {
+      return ActionResult(
+        success: false,
+        message: 'Qo\'ng\'iroq ruxsati berilmagan',
+      );
+    }
+
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    try {
+      await FlutterPhoneDirectCaller.callNumber(cleaned);
+      return ActionResult(success: true, message: '$cleaned ga qo\'ng\'iroq qilinmoqda');
+    } catch (e) {
+      final uri = Uri(scheme: 'tel', path: cleaned);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+        return ActionResult(success: true, message: 'Qo\'ng\'iroq qilinmoqda');
+      }
+      return ActionResult(success: false, message: 'Qo\'ng\'iroq qilishda xato');
+    }
+  }
+
+  Future<ActionResult> _sendSms(String phone, String message) async {
+    final uri = Uri(
+      scheme: 'sms',
+      path: phone.replaceAll(RegExp(r'[^\d+]'), ''),
+      queryParameters: {'body': message},
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return ActionResult(success: true, message: 'SMS ilovasi ochildi');
+    }
+    return ActionResult(success: false, message: 'SMS yuborishda xato');
+  }
+
+  Future<ActionResult> _openApp(String appName) async {
+    final packageMap = {
+      'telegram': 'org.telegram.messenger',
+      'whatsapp': 'com.whatsapp',
+      'instagram': 'com.instagram.android',
+      'youtube': 'com.google.android.youtube',
+      'gmail': 'com.google.android.gm',
+      'maps': 'com.google.android.apps.maps',
+      'chrome': 'com.android.chrome',
+      'camera': 'com.android.camera2',
+      'calculator': 'com.android.calculator2',
+      'spotify': 'com.spotify.music',
+      'netflix': 'com.netflix.mediaclient',
+      'facebook': 'com.facebook.katana',
+      'twitter': 'com.twitter.android',
+      'tiktok': 'com.zhiliaoapp.musically',
+      'zoom': 'us.zoom.videomeetings',
+    };
+
+    final lowerName = appName.toLowerCase();
+    String? packageName;
+
+    for (final entry in packageMap.entries) {
+      if (lowerName.contains(entry.key)) {
+        packageName = entry.value;
+        break;
+      }
+    }
+
+    if (packageName != null) {
+      try {
+        final intent = AndroidIntent(
+          action: 'android.intent.action.MAIN',
+          package: packageName,
+          flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+        );
+        await intent.launch();
+        return ActionResult(success: true, message: '$appName ochildi');
+      } catch (e) {
+        final storeUrl = Uri.parse(
+          'market://details?id=$packageName',
+        );
+        if (await canLaunchUrl(storeUrl)) {
+          await launchUrl(storeUrl);
+        }
+        return ActionResult(
+          success: false,
+          message: '$appName topilmadi, Play Store ochildi',
+        );
+      }
+    }
+
+    return ActionResult(success: false, message: '$appName ilovasi topilmadi');
+  }
+
+  Future<ActionResult> _playMusic(String query) async {
+    final spotifyUri = Uri.parse(
+      'spotify:search:${Uri.encodeComponent(query)}',
+    );
+    if (await canLaunchUrl(spotifyUri)) {
+      await launchUrl(spotifyUri);
+      return ActionResult(success: true, message: 'Spotify\'da qidirilmoqda: $query');
+    }
+
+    final youtubeUri = Uri.parse(
+      'https://www.youtube.com/results?search_query=${Uri.encodeComponent("$query music")}',
+    );
+    await launchUrl(youtubeUri, mode: LaunchMode.externalApplication);
+    return ActionResult(success: true, message: 'YouTube\'da musiqa qidirilmoqda');
+  }
+
+  Future<ActionResult> _searchWeb(String query) async {
+    final uri = Uri.parse(
+      'https://www.google.com/search?q=${Uri.encodeComponent(query)}',
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return ActionResult(success: true, message: 'Google\'da qidirilmoqda: $query');
+  }
+
+  Future<ActionResult> _setAlarm(String time, String label) async {
+    final intent = AndroidIntent(
+      action: 'android.intent.action.SET_ALARM',
+      arguments: {
+        'android.intent.extra.alarm.SKIP_UI': true,
+        'android.intent.extra.alarm.MESSAGE': label,
+      },
+    );
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Uyg\'otgich sozlandi: $time - $label');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Uyg\'otgich sozlashda xato');
+    }
+  }
+
+  Future<ActionResult> _openSettings(String section) async {
+    final settingsMap = {
+      'wifi': 'android.settings.WIFI_SETTINGS',
+      'bluetooth': 'android.settings.BLUETOOTH_SETTINGS',
+      'sound': 'android.settings.SOUND_SETTINGS',
+      'display': 'android.settings.DISPLAY_SETTINGS',
+      'battery': 'android.settings.BATTERY_SAVER_SETTINGS',
+      'storage': 'android.settings.INTERNAL_STORAGE_SETTINGS',
+      'apps': 'android.settings.MANAGE_ALL_APPLICATIONS_SETTINGS',
+      'location': 'android.settings.LOCATION_SOURCE_SETTINGS',
+      'security': 'android.settings.SECURITY_SETTINGS',
+      'language': 'android.settings.LOCALE_SETTINGS',
+    };
+
+    final lowerSection = section.toLowerCase();
+    String action = 'android.settings.SETTINGS';
+
+    for (final entry in settingsMap.entries) {
+      if (lowerSection.contains(entry.key)) {
+        action = entry.value;
+        break;
+      }
+    }
+
+    final intent = AndroidIntent(action: action);
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Sozlamalar ochildi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Sozlamalar ochishda xato');
+    }
+  }
+
+  Future<ActionResult> _sendTelegram(String contact, String message) async {
+    final uri = Uri.parse('https://t.me/$contact');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'Telegram ochildi');
+    }
+    return ActionResult(success: false, message: 'Telegram topilmadi');
+  }
+
+  Future<ActionResult> _sendWhatsApp(String phone, String message) async {
+    final cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
+    final uri = Uri.parse(
+      'https://wa.me/$cleaned?text=${Uri.encodeComponent(message)}',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'WhatsApp ochildi');
+    }
+    return ActionResult(success: false, message: 'WhatsApp topilmadi');
+  }
+
+  Future<ActionResult> _searchYouTube(String query) async {
+    final intent = AndroidIntent(
+      action: 'android.intent.action.SEARCH',
+      package: 'com.google.android.youtube',
+      arguments: {'query': query},
+    );
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'YouTube\'da qidirilmoqda: $query');
+    } catch (e) {
+      final uri = Uri.parse(
+        'https://www.youtube.com/results?search_query=${Uri.encodeComponent(query)}',
+      );
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'YouTube ochildi');
+    }
+  }
+
+  Future<ActionResult> _openCamera() async {
+    final intent = AndroidIntent(
+      action: 'android.media.action.IMAGE_CAPTURE',
+      flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+    );
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Kamera ochildi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Kamera ochishda xato');
+    }
+  }
+
+  Future<ActionResult> _openGallery() async {
+    final intent = AndroidIntent(
+      action: 'android.intent.action.VIEW',
+      type: 'image/*',
+      flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+    );
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Galereya ochildi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Galereya ochishda xato');
+    }
+  }
+
+  Future<ActionResult> _openMaps(String location) async {
+    final uri = Uri.parse(
+      'https://www.google.com/maps/search/${Uri.encodeComponent(location)}',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'Xaritada topilmoqda: $location');
+    }
+    return ActionResult(success: false, message: 'Xarita ochishda xato');
+  }
+}
+
+class ActionResult {
+  final bool success;
+  final String message;
+  final dynamic data;
+
+  const ActionResult({
+    required this.success,
+    required this.message,
+    this.data,
+  });
+}
