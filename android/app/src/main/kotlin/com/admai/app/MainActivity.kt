@@ -8,6 +8,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.content.Context
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.net.Uri
 
@@ -73,6 +74,17 @@ class MainActivity : FlutterActivity() {
                         "sdkInt" to Build.VERSION.SDK_INT,
                     ))
                 }
+                "isIgnoringBatteryOptimizations" -> {
+                    result.success(isIgnoringBatteryOptimizations())
+                }
+                "requestIgnoreBatteryOptimizations" -> {
+                    requestIgnoreBatteryOptimizations()
+                    result.success(null)
+                }
+                "openBatteryOptimizationSettings" -> {
+                    startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -104,6 +116,23 @@ class MainActivity : FlutterActivity() {
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
         }
+    }
+
+    // ---- Battery optimization exemption ----
+    // Android's Doze / App Standby kills background mic listening (e.g. the
+    // "Hey ADM AI" wake-word loop) unless the app is whitelisted. This is the
+    // same official mechanism WhatsApp/Telegram use to stay reachable in the
+    // background -- the user must explicitly approve the system dialog.
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return false
+        return pm.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private fun requestIgnoreBatteryOptimizations() {
+        if (isIgnoringBatteryOptimizations()) return
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+        intent.data = Uri.parse("package:$packageName")
+        startActivity(intent)
     }
 
     // ---- Call screening role (Android 10+) ----

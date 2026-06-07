@@ -198,6 +198,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           activeColor: AppTheme.success,
           onChanged: (_) => ref.read(wakeWordProvider.notifier).toggle(),
         ),
+        if (wakeWord.enabled && !wakeWord.batteryExempted)
+          _SettingsTile(
+            icon: Icons.battery_alert_outlined,
+            title: 'Batareya tejashni o\'chiring',
+            subtitle: 'Aks holda "Hey ADM AI" ekran o\'chganda to\'xtab qolishi mumkin',
+            onTap: () => ref.read(wakeWordProvider.notifier).requestBatteryExemption(),
+          ),
         _SettingsTile(
           icon: Icons.language_outlined,
           title: 'Til',

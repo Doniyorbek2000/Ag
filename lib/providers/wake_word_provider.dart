@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../services/wake_word_service.dart';
 import '../services/background_service.dart';
+import '../services/battery_optimization_service.dart';
 import '../router/app_router.dart';
 
 /// Bridges [WakeWordService] (continuous "Hey ADM AI" listening) with
@@ -20,18 +21,26 @@ class WakeWordState {
   final bool enabled;
   final bool isListening;
   final String lastHeard;
+  final bool batteryExempted;
 
   const WakeWordState({
     this.enabled = false,
     this.isListening = false,
     this.lastHeard = '',
+    this.batteryExempted = false,
   });
 
-  WakeWordState copyWith({bool? enabled, bool? isListening, String? lastHeard}) {
+  WakeWordState copyWith({
+    bool? enabled,
+    bool? isListening,
+    String? lastHeard,
+    bool? batteryExempted,
+  }) {
     return WakeWordState(
       enabled: enabled ?? this.enabled,
       isListening: isListening ?? this.isListening,
       lastHeard: lastHeard ?? this.lastHeard,
+      batteryExempted: batteryExempted ?? this.batteryExempted,
     );
   }
 }
@@ -39,17 +48,32 @@ class WakeWordState {
 class WakeWordController extends StateNotifier<WakeWordState> {
   final Ref _ref;
   final WakeWordService _service = WakeWordService();
+  final BatteryOptimizationService _battery = BatteryOptimizationService();
   static const _settingsKey = 'wake_word_enabled';
 
   WakeWordController(this._ref) : super(const WakeWordState()) {
     _restore();
     _service.addListener(_onServiceChanged);
+    _refreshBatteryStatus();
   }
 
   void _restore() {
     final box = Hive.box('settings');
     final enabled = box.get(_settingsKey, defaultValue: false) as bool;
     if (enabled) enable();
+  }
+
+  Future<void> _refreshBatteryStatus() async {
+    final exempted = await _battery.isExempted();
+    state = state.copyWith(batteryExempted: exempted);
+  }
+
+  /// Launches the system dialog asking the user to exempt ADM AI from
+  /// battery optimization, so "Hey ADM AI" keeps listening reliably in the
+  /// background. Required once per device -- the OS remembers the choice.
+  Future<void> requestBatteryExemption() async {
+    await _battery.requestExemption();
+    await _refreshBatteryStatus();
   }
 
   void _onServiceChanged() {
@@ -64,6 +88,13 @@ class WakeWordController extends StateNotifier<WakeWordState> {
     await box.put(_settingsKey, true);
 
     await AdmBackgroundService.startVoiceService();
+
+    // Prompt for the battery-optimization exemption the first time the
+    // feature is turned on -- without it, Doze kills the listening loop
+    // shortly after the screen turns off.
+    if (!await _battery.isExempted()) {
+      await requestBatteryExemption();
+    }
 
     await _service.start(
       locale: locale,
