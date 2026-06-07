@@ -41,6 +41,18 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS payments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_tx_id TEXT,
+    status TEXT NOT NULL DEFAULT 'pending',
+    amount REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS usage_logs (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -73,6 +85,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
+  CREATE INDEX IF NOT EXISTS idx_payments_provider_tx ON payments(provider, provider_tx_id);
 `);
 
 // Bootstrap default admin account if none exists

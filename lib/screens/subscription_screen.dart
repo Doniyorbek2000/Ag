@@ -6,6 +6,8 @@ import '../theme/app_theme.dart';
 import '../models/subscription_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/purchase_service.dart';
+import '../services/local_payment_service.dart';
+import '../services/api_client.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -17,6 +19,7 @@ class SubscriptionScreen extends ConsumerStatefulWidget {
 class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   int _selectedPlanIndex = 1;
   final PurchaseService _purchaseService = PurchaseService();
+  final LocalPaymentService _localPayments = LocalPaymentService();
 
   @override
   void initState() {
@@ -461,7 +464,96 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     }
 
-    _showDemoActivationDialog(context, plan);
+    _showPaymentMethodSheet(context, plan);
+  }
+
+  /// When Google Play Billing isn't available (debug build, product not
+  /// registered, ...), offers Click/Payme — the two payment systems most
+  /// widely used in Uzbekistan — as well as a clearly-labelled manual demo
+  /// activation. Click/Payme open a hosted checkout page; the backend
+  /// activates the plan automatically once the provider's webhook confirms
+  /// payment (see backend/src/routes/payments.js).
+  void _showPaymentMethodSheet(BuildContext context, SubscriptionPlanModel plan) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.bgCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Text(
+              '${plan.name} — to\'lov usulini tanlang',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.credit_card_rounded, color: AppTheme.primaryBlue),
+              title: const Text('Click orqali to\'lash', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Hosted checkout sahifasi ochiladi', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _payWithLocalProvider(LocalPaymentProvider.click, plan);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.accentCyan),
+              title: const Text('Payme orqali to\'lash', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Hosted checkout sahifasi ochiladi', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _payWithLocalProvider(LocalPaymentProvider.payme, plan);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.science_outlined, color: AppTheme.textHint),
+              title: const Text('Qo\'lda faollashtirish (demo)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Haqiqiy to\'lovni tasdiqlamaydi — faqat sinov uchun', style: TextStyle(color: AppTheme.textHint, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showDemoActivationDialog(context, plan);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _payWithLocalProvider(LocalPaymentProvider provider, SubscriptionPlanModel plan) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final checkoutUrl = await _localPayments.createCheckout(
+        provider: provider,
+        plan: plan.plan.name,
+      );
+      final opened = await _localPayments.openCheckout(checkoutUrl);
+      if (!opened) {
+        throw ApiException('To\'lov sahifasini ochib bo\'lmadi');
+      }
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            '${provider.label} to\'lov sahifasi ochildi. To\'lovni yakunlagach, '
+            'reja avtomatik faollashadi — sahifani qayta oching.',
+          ),
+          backgroundColor: AppTheme.success,
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message), backgroundColor: AppTheme.error));
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('${provider.label} bilan to\'lashda xato yuz berdi'), backgroundColor: AppTheme.error),
+      );
+    }
   }
 
   void _showDemoActivationDialog(BuildContext context, SubscriptionPlanModel plan) {

@@ -34,6 +34,12 @@ hisobi avtomatik yaratiladi — production'da darhol parolni almashtiring.
 - `GET /api/subscriptions/me` — obunalar tarixi
 - `POST /api/subscriptions/cancel` — obunani bekor qilish
 
+### To'lovlar (Click / Payme)
+- `POST /api/payments/click/create` — Click checkout havolasini yaratish
+- `POST /api/payments/click/webhook` — Click Prepare/Complete callback'i (Click chaqiradi)
+- `POST /api/payments/payme/create` — Payme checkout havolasini yaratish
+- `POST /api/payments/payme/webhook` — Payme JSON-RPC callback'i (Payme chaqiradi)
+
 ### Admin panel (faqat `role = admin`)
 - `GET /api/admin/stats` — umumiy statistika (foydalanuvchilar, daromad, grafiklar)
 - `GET /api/admin/users` — foydalanuvchilar ro'yxati (qidiruv, filtrlash, sahifalash)
@@ -73,6 +79,56 @@ Bu o'zgaruvchilar sozlanmagan bo'lsa, server ogohlantirish chiqaradi va
 mijoz yuborgan kvitansiyaga ishonib faollashtirishni davom ettiradi (joriy
 xulq-atvor) — chunki bu kalitni faqat hisob egasi yarata oladi va undan
 tashqarida ta'minlab bo'lmaydi.
+
+## Click va Payme orqali to'lov qabul qilish
+
+`/api/payments/*` Click va Payme — O'zbekistondagi eng ko'p ishlatiladigan
+to'lov tizimlari — orqali obuna sotib olishni qo'llab-quvvatlaydi (Google
+Play billing'ga muqobil/qo'shimcha sifatida, ayniqsa raqamli mahsulot uchun
+Play Store komissiyasidan qochish kerak bo'lganda foydali). Ishlashi uchun
+**faqat tadbirkorlik/merchant hisobi egasi yarata oladigan** hisob va kalitlar
+kerak:
+
+### Click
+1. [merchant.click.uz](https://merchant.click.uz) saytida ro'yxatdan o'ting
+   va "Shop API" xizmatini ulang — sizga `SERVICE_ID`, `MERCHANT_ID` va
+   `SECRET_KEY` beriladi.
+2. Click kabinetida webhook manzilini
+   `https://<sizning-domeningiz>/api/payments/click/webhook` qilib sozlang.
+3. `.env`ga qo'shing:
+   ```
+   CLICK_SERVICE_ID=...
+   CLICK_MERCHANT_ID=...
+   CLICK_SECRET_KEY=...
+   ```
+
+### Payme
+1. [business.paycom.uz](https://business.paycom.uz) saytida ro'yxatdan
+   o'ting va ilova uchun kassa (cash register) yarating — sizga
+   `MERCHANT_ID` va maxfiy `KEY` beriladi.
+2. Payme kabinetida webhook (Merchant API endpoint) manzilini
+   `https://<sizning-domeningiz>/api/payments/payme/webhook` qilib sozlang.
+3. `.env`ga qo'shing:
+   ```
+   PAYME_MERCHANT_ID=...
+   PAYME_KEY=...
+   ```
+
+### Ishlash tartibi
+1. Ilova `POST /api/payments/click/create` yoki `/api/payments/payme/create`
+   chaqiradi → mahalliy `payments` jadvalida `pending` yozuv yaratiladi va
+   checkout havolasi qaytariladi (`url_launcher` orqali ochiladi).
+2. Foydalanuvchi to'lovni yakunlagach, Click/Payme webhook orqali serverga
+   qaytadi — imzo/avtorizatsiya tekshiriladi (`services/click.js`,
+   `services/payme.js`), keyin `payments` yozuvi yangilanadi va muvaffaqiyatli
+   to'lovda obuna avtomatik faollashtiriladi (`subscriptions` jadvaliga
+   yangi yozuv + foydalanuvchi tarifi yangilanadi).
+
+`CLICK_SECRET_KEY`/`PAYME_KEY` sozlanmagan bo'lsa, `/api/payments/*`
+`503 "sozlanmagan"` bilan javob beradi — hech qachon tasdiqlanmagan to'lovni
+"ishonib" faollashtirmaydi (Google Play oqimidan farqli, chunki bu yerda
+pul to'g'ridan-to'g'ri va tasdiqlanmasdan faollashtirish jiddiy xavf
+tug'diradi).
 
 ## Production'ga joylashtirish (Docker)
 

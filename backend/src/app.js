@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const subscriptionRoutes = require('./routes/subscriptions');
+const paymentRoutes = require('./routes/payments');
 const { requestLogger, logRateLimitHit } = require('./middleware/requestLogger');
 
 function createApp() {
@@ -53,6 +54,7 @@ function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/users', userRoutes);
   app.use('/api/subscriptions', subscriptionRoutes);
+  app.use('/api/payments', paymentRoutes);
   app.use('/api/admin', adminRoutes);
 
   app.use((req, res) => res.status(404).json({ error: 'Manzil topilmadi' }));
