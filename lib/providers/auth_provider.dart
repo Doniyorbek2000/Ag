@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/subscription_model.dart';
+import '../services/api_client.dart' show ApiClient;
 import '../services/crash_reporting_service.dart';
 import '../services/analytics_service.dart';
 
@@ -95,10 +96,50 @@ class AuthNotifier extends StateNotifier<UserState> {
     return generated;
   }
 
+  /// The app has no visible login/registration screen -- a backend account is
+  /// provisioned transparently, keyed off the anonymous per-install id, so
+  /// that account-bound features (subscriptions, Click/Payme checkout, usage
+  /// tracking, support tickets) work without asking the user for credentials.
+  /// Derived deterministically from [anonId] so re-provisioning after a
+  /// reinstall (same id is not regenerated once persisted) always resolves to
+  /// the same backend account via login-or-register.
+  String _deviceAccountEmail(String anonId) => '$anonId@device.adm-ai.local';
+  String _deviceAccountPassword(String anonId) => 'adm-device-$anonId';
+
+  Future<void> _ensureBackendAccount(SharedPreferences prefs, String anonId) async {
+    if (prefs.getString('backend_token') != null) return;
+
+    final api = ApiClient();
+    final email = _deviceAccountEmail(anonId);
+    final password = _deviceAccountPassword(anonId);
+
+    String? token;
+    try {
+      final res = await api.post<Map<String, dynamic>>(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+      );
+      token = res.data?['token'] as String?;
+    } catch (_) {
+      try {
+        final res = await api.post<Map<String, dynamic>>(
+          '/auth/register',
+          data: {'name': 'ADM AI', 'email': email, 'password': password},
+        );
+        token = res.data?['token'] as String?;
+      } catch (_) {
+        return; // Backend unreachable -- the app keeps working fully offline.
+      }
+    }
+
+    if (token != null) await api.setToken(token);
+  }
+
   Future<void> _loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
     final anonId = await _ensureAnonId(prefs);
     CrashReportingService.setUserId(anonId);
+    _ensureBackendAccount(prefs, anonId);
 
     state = state.copyWith(
       name: prefs.getString('user_name'),
