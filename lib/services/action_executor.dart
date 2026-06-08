@@ -7,6 +7,7 @@ import 'telegram_service.dart';
 import 'whatsapp_service.dart';
 import 'weather_service.dart';
 import 'news_service.dart';
+import 'unit_converter_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
@@ -61,6 +62,8 @@ class ActionExecutor {
         return _getWeather(params['city'] as String? ?? '');
       case 'GET_NEWS':
         return _getNews(params['topic'] as String?);
+      case 'CONVERT_UNITS':
+        return _convertUnits(params);
       default:
         return ActionResult(
           success: false,
@@ -379,6 +382,39 @@ class ActionExecutor {
             : e.message,
       );
     }
+  }
+
+  Future<ActionResult> _convertUnits(Map<String, dynamic> params) async {
+    final rawValue = params['value'];
+    final value = rawValue is num ? rawValue.toDouble() : double.tryParse(rawValue?.toString() ?? '');
+    final from = params['from'] as String? ?? '';
+    final to = params['to'] as String? ?? '';
+
+    if (value == null || from.isEmpty || to.isEmpty) {
+      return ActionResult(
+        success: false,
+        message: 'Aylantirish uchun qiymat va o\'lchov birliklarini ayting (masalan: 10 kilometrni milga aylantir)',
+      );
+    }
+
+    try {
+      final result = UnitConverter.convert(value: value, from: from, to: to);
+      return ActionResult(
+        success: true,
+        message: '${_formatNumber(value)} $from = ${_formatNumber(result)} $to',
+        data: result,
+      );
+    } on UnitConversionException catch (e) {
+      return ActionResult(success: false, message: e.message);
+    }
+  }
+
+  String _formatNumber(double value) {
+    if (value == value.roundToDouble() && value.abs() < 1e15) {
+      return value.toStringAsFixed(0);
+    }
+    final fixed = value.toStringAsFixed(4);
+    return fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
   }
 
   Future<ActionResult> _openMaps(String location) async {

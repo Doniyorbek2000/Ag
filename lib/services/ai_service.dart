@@ -71,6 +71,7 @@ Amallar turlari:
 - GET_NEWS: {topic: "mavzu (ixtiyoriy)"}
 - REMEMBER_FACT: {key: "qisqa nom", value: "eslab qolish kerak bo'lgan ma'lumot"}
 - FORGET_FACT: {key: "o'chiriladigan eslatma nomi"}
+- CONVERT_UNITS: {value: son, from: "manba birlik", to: "maqsad birlik"} — masofa, og'irlik, hajm va harorat birliklari orasida aylantirish (masalan: "10 km ni milga aylantir", "30 gradus selsiyni farengeytga aylantir", "5 funtni kilogrammga aylantir")
 
 UZOQ MUDDATLI XOTIRA:
 Foydalanuvchi senga biror narsani "es ket", "yodingda tut", "eslab qol"
