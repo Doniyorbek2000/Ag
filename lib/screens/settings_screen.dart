@@ -55,6 +55,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               SliverToBoxAdapter(child: _buildSubscriptionSection(context, user)),
               SliverToBoxAdapter(child: _buildPreferencesSection()),
               SliverToBoxAdapter(child: _buildAboutSection(context)),
+              SliverToBoxAdapter(child: _buildAccountDangerZone(context)),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -287,6 +288,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildAccountDangerZone(BuildContext context) {
+    return _SettingsSection(
+      title: 'Hisob',
+      children: [
+        _SettingsTile(
+          icon: Icons.delete_outline,
+          title: 'Hisobni o\'chirish',
+          subtitle: 'Barcha ma\'lumotlar butunlay o\'chiriladi',
+          color: AppTheme.error,
+          onTap: () => _confirmDeleteAccount(context),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.bgCard,
+        title: const Text('Hisobni o\'chirish', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Hisobingiz, obuna va to\'lovlar tarixi, hamda ushbu qurilmadagi barcha ma\'lumotlar '
+          '(suhbatlar, buxgalteriya yozuvlari, eslatmalar) butunlay o\'chiriladi. '
+          'Bu amalni bekor qilib bo\'lmaydi.',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Bekor'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('O\'chirish', style: TextStyle(color: AppTheme.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final success = await ref.read(authProvider.notifier).deleteAccount();
+    if (!mounted) return;
+
+    if (success) {
+      context.go('/onboarding');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hisobni o\'chirib bo\'lmadi — internetga ulanishni tekshirib, qayta urining'),
+        ),
+      );
+    }
   }
 
   Future<void> _editName(String? currentName) async {
@@ -813,6 +870,7 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onTap;
+  final Color? color;
 
   const _SettingsTile({
     required this.icon,
@@ -820,15 +878,16 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.onTap,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppTheme.textHint, size: 20),
+      leading: Icon(icon, color: color ?? AppTheme.textHint, size: 20),
       title: Text(
         title,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: TextStyle(color: color ?? Colors.white, fontSize: 14),
       ),
       subtitle: subtitle != null
           ? Text(

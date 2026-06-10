@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/subscription_model.dart';
@@ -196,6 +197,34 @@ class AuthNotifier extends StateNotifier<UserState> {
 
     await prefs.setInt('daily_calls_used', newCount);
     state = state.copyWith(dailyCallsUsed: newCount, lastResetDate: now);
+  }
+
+  /// Permanently deletes the device's backend account (subscriptions,
+  /// payments, usage history) and wipes all local app data, returning the
+  /// app to a fresh-install state. Returns false (without touching local
+  /// data) if a backend account exists but the deletion request fails --
+  /// e.g. no network -- so the user can retry instead of losing server-side
+  /// history while believing it's gone.
+  Future<bool> deleteAccount() async {
+    final api = ApiClient();
+    if (api.token != null) {
+      try {
+        await api.delete('/users/me');
+      } catch (_) {
+        return false;
+      }
+      await api.setToken(null);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    for (final boxName in ['chats', 'bookkeeping', 'memory', 'contacts_cache', 'analytics_events', 'settings']) {
+      if (Hive.isBoxOpen(boxName)) await Hive.box(boxName).clear();
+    }
+
+    await _loadFromStorage();
+    return true;
   }
 }
 
