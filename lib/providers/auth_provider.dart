@@ -6,6 +6,7 @@ import '../models/subscription_model.dart';
 import '../services/api_client.dart' show ApiClient;
 import '../services/crash_reporting_service.dart';
 import '../services/analytics_service.dart';
+import '../utils/hive_boxes.dart';
 
 class UserState {
   final String? name;
@@ -107,32 +108,29 @@ class AuthNotifier extends StateNotifier<UserState> {
   String _deviceAccountEmail(String anonId) => '$anonId@device.adm-ai.local';
   String _deviceAccountPassword(String anonId) => 'adm-device-$anonId';
 
+  /// Posts to an auth endpoint and extracts the returned token, or returns
+  /// null on any failure (wrong/missing credentials, backend unreachable).
+  Future<String?> _tryAuth(ApiClient api, String path, Map<String, dynamic> data) async {
+    try {
+      final res = await api.post<Map<String, dynamic>>(path, data: data);
+      return res.data?['token'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _ensureBackendAccount(SharedPreferences prefs, String anonId) async {
     if (prefs.getString('backend_token') != null) return;
 
     final api = ApiClient();
     final email = _deviceAccountEmail(anonId);
     final password = _deviceAccountPassword(anonId);
+    final credentials = {'email': email, 'password': password};
 
-    String? token;
-    try {
-      final res = await api.post<Map<String, dynamic>>(
-        '/auth/login',
-        data: {'email': email, 'password': password},
-      );
-      token = res.data?['token'] as String?;
-    } catch (_) {
-      try {
-        final res = await api.post<Map<String, dynamic>>(
-          '/auth/register',
-          data: {'name': 'ADM AI', 'email': email, 'password': password},
-        );
-        token = res.data?['token'] as String?;
-      } catch (_) {
-        return; // Backend unreachable -- the app keeps working fully offline.
-      }
-    }
+    final token = await _tryAuth(api, '/auth/login', credentials) ??
+        await _tryAuth(api, '/auth/register', {'name': 'ADM AI', ...credentials});
 
+    // If both fail (e.g. backend unreachable), the app keeps working offline.
     if (token != null) await api.setToken(token);
   }
 
@@ -219,7 +217,7 @@ class AuthNotifier extends StateNotifier<UserState> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
 
-    for (final boxName in ['chats', 'bookkeeping', 'memory', 'contacts_cache', 'analytics_events', 'settings']) {
+    for (final boxName in allHiveBoxNames) {
       if (Hive.isBoxOpen(boxName)) await Hive.box(boxName).clear();
     }
 

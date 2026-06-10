@@ -90,9 +90,17 @@ router.get('/me/tickets', (req, res) => {
 // Permanently deletes the caller's account and all data tied to it
 // (subscriptions, payments, usage logs, support tickets cascade via FK).
 // Required for Google Play's in-app account deletion policy.
+const deleteUserAndData = db.transaction((userId) => {
+  // broadcasts.created_by has ON DELETE SET NULL, but only on databases
+  // created after that constraint was added -- the explicit UPDATE keeps
+  // older databases (CREATE TABLE IF NOT EXISTS never retrofits them) from
+  // hitting an FK violation when deleting an admin who sent broadcasts.
+  db.prepare(`UPDATE broadcasts SET created_by = NULL WHERE created_by = ?`).run(userId);
+  return db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
+});
+
 router.delete('/me', (req, res) => {
-  db.prepare(`UPDATE broadcasts SET created_by = NULL WHERE created_by = ?`).run(req.user.id);
-  const result = db.prepare(`DELETE FROM users WHERE id = ?`).run(req.user.id);
+  const result = deleteUserAndData(req.user.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
   return res.status(204).send();
 });

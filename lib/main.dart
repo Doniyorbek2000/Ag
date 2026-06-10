@@ -13,6 +13,7 @@ import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 import 'models/chat_message.dart';
 import 'models/bookkeeping_entry.dart';
+import 'utils/hive_boxes.dart';
 
 void main() async {
   await CrashReportingService.init(() async {
@@ -48,11 +49,9 @@ Future<void> _initHiveAdapters() async {
   Hive.registerAdapter(BookkeepingEntryAdapter());
   Hive.registerAdapter(EntryTypeAdapter());
 
-  await Hive.openBox('settings');
-  await Hive.openBox('chats');
-  await Hive.openBox('bookkeeping');
-  await Hive.openBox('contacts_cache');
-  await Hive.openBox('memory');
+  for (final boxName in allHiveBoxNames) {
+    await Hive.openBox(boxName);
+  }
 }
 
 class AdmAiApp extends ConsumerWidget {

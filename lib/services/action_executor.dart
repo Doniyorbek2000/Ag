@@ -414,7 +414,7 @@ class ActionExecutor {
       return value.toStringAsFixed(0);
     }
     final fixed = value.toStringAsFixed(4);
-    return fixed.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+    return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
   }
 
   Future<ActionResult> _openMaps(String location) async {

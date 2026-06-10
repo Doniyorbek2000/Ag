@@ -78,7 +78,7 @@ db.exec(`
     body TEXT NOT NULL,
     target_plan TEXT NOT NULL DEFAULT 'all',
     sent_count INTEGER NOT NULL DEFAULT 0,
-    created_by TEXT REFERENCES users(id),
+    created_by TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
