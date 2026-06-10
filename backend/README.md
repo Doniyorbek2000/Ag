@@ -28,6 +28,7 @@ hisobi avtomatik yaratiladi — production'da darhol parolni almashtiring.
 - `PATCH /api/users/me` — profilni yangilash
 - `POST /api/users/me/tickets` — qo'llab-quvvatlash murojaati yuborish
 - `GET /api/users/me/tickets` — murojaatlar tarixi
+- `DELETE /api/users/me` — hisobni va unga tegishli barcha ma'lumotlarni butunlay o'chirish (Google Play hisobni o'chirish talabi)
 
 ### Obuna
 - `POST /api/subscriptions/purchase` — xaridni faollashtirish (Google Play receipt)

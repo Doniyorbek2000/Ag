@@ -4,6 +4,7 @@ const { freshTestEnv } = require('./helpers/setup');
 
 freshTestEnv();
 const { createApp } = require('../src/app');
+const db = require('../src/db');
 
 const app = createApp();
 
@@ -104,6 +105,43 @@ test('support tickets can be created and listed for the current user', async () 
 test('all /api/users routes require authentication', async () => {
   await withServer(async (base) => {
     const res = await fetch(`${base}/api/users/me/usage`);
+    assert.strictEqual(res.status, 401);
+  });
+});
+
+test('DELETE /me removes the account and cascades related data', async () => {
+  await withServer(async (base) => {
+    const reg = await fetch(`${base}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Delete Me', email: 'delete-me@admai.uz', password: 'password123' }),
+    });
+    const { token, user } = await reg.json();
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+    await fetch(`${base}/api/users/me/tickets`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ subject: 'Test', message: 'Test message' }),
+    });
+
+    const del = await fetch(`${base}/api/users/me`, { method: 'DELETE', headers });
+    assert.strictEqual(del.status, 204);
+
+    const me = await fetch(`${base}/api/auth/me`, { headers });
+    assert.strictEqual(me.status, 404);
+
+    const ticketCount = db.prepare(`SELECT COUNT(*) AS c FROM support_tickets WHERE user_id = ?`).get(user.id).c;
+    assert.strictEqual(ticketCount, 0);
+
+    const userRow = db.prepare(`SELECT id FROM users WHERE id = ?`).get(user.id);
+    assert.strictEqual(userRow, undefined);
+  });
+});
+
+test('DELETE /me requires authentication', async () => {
+  await withServer(async (base) => {
+    const res = await fetch(`${base}/api/users/me`, { method: 'DELETE' });
     assert.strictEqual(res.status, 401);
   });
 });

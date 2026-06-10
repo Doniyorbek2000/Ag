@@ -87,4 +87,14 @@ router.get('/me/tickets', (req, res) => {
   return res.json({ tickets: rows });
 });
 
+// Permanently deletes the caller's account and all data tied to it
+// (subscriptions, payments, usage logs, support tickets cascade via FK).
+// Required for Google Play's in-app account deletion policy.
+router.delete('/me', (req, res) => {
+  db.prepare(`UPDATE broadcasts SET created_by = NULL WHERE created_by = ?`).run(req.user.id);
+  const result = db.prepare(`DELETE FROM users WHERE id = ?`).run(req.user.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+  return res.status(204).send();
+});
+
 module.exports = router;
