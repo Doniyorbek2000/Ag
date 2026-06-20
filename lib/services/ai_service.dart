@@ -74,9 +74,11 @@ Amallar turlari:
 - CONVERT_UNITS: {value: son, from: "manba birlik", to: "maqsad birlik"} — masofa, og'irlik, hajm va harorat birliklari orasida aylantirish (masalan: "10 km ni milga aylantir", "30 gradus selsiyni farengeytga aylantir", "5 funtni kilogrammga aylantir")
 - CREATE_EVENT: {title: "tadbir nomi", date: "sana (bugun/ertaga/2024-12-25)", time: "14:00", description: "tavsif", location: "joy"} — kalendarга tadbir qo'shish
 - SET_REMINDER: {title: "eslatma nomi", time: "daqiqa soni (5/10/30/60)", message: "eslatma matni"} — belgilangan vaqtdan keyin eslatma berish
+- GET_REMINDERS: {} — kutilayotgan eslatmalar ro'yxatini ko'rsatish
 - SEND_EMAIL: {to: "email@manzil.com", subject: "mavzu", body: "xat matni"} — email yuborish
 - ADD_EXPENSE: {title: "xarajat nomi", amount: summa, category: "kategoriya", note: "izoh"} — buxgalteriyaga chiqim qo'shish (kategoriyalar: Oziq-ovqat, Transport, Uy-joy, Sog'liq, Ta'lim, Ko'ngilochar, Kiyim-kechak, Kommunal, Telefon, Internet, Boshqa)
 - ADD_INCOME: {title: "daromad nomi", amount: summa, category: "kategoriya", note: "izoh"} — buxgalteriyaga kirim qo'shish (kategoriyalar: Ish haqi, Freelance, Biznes, Investitsiya, Sovg'a, Boshqa)
+- GET_REPORT: {period: "month/week/year"} — buxgalteriya hisobotini ko'rsatish (kirim, chiqim, balans, kategoriyalar bo'yicha tahlil)
 - FIND_CONTACT: {name: "kontakt ismi"} — telefon kontaktlaridan qidirish va raqamini topish
 
 UZOQ MUDDATLI XOTIRA:

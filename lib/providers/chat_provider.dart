@@ -12,6 +12,7 @@ import '../services/backend_sync_service.dart';
 import '../services/crash_reporting_service.dart';
 import '../models/bookkeeping_entry.dart';
 import '../screens/bookkeeping_screen.dart';
+import '../services/reminder_service.dart';
 import 'auth_provider.dart';
 import 'locale_provider.dart';
 
@@ -265,6 +266,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
       case 'ADD_EXPENSE':
       case 'ADD_INCOME':
         return _addBookkeepingEntry(action);
+      case 'GET_REPORT':
+        return _generateReport(action);
+      case 'GET_REMINDERS':
+        return _listReminders();
       default:
         return _executor.execute(action.type, action.params);
     }
@@ -299,6 +304,110 @@ class ChatNotifier extends StateNotifier<ChatState> {
     return ActionResult(
       success: true,
       message: '$typeLabel qo\'shildi: $title — ${amount.toStringAsFixed(0)} so\'m',
+    );
+  }
+
+  Future<ActionResult> _generateReport(ActionCommand action) async {
+    final period = action.params['period']?.toString() ?? 'month';
+    final box = Hive.box('bookkeeping');
+    if (box.isEmpty) {
+      return const ActionResult(
+        success: false,
+        message: 'Hali hech qanday kirim yoki chiqim yozilmagan',
+      );
+    }
+
+    final now = DateTime.now();
+    DateTime startDate;
+    String periodLabel;
+
+    switch (period) {
+      case 'week':
+        startDate = now.subtract(const Duration(days: 7));
+        periodLabel = 'So\'nggi 7 kun';
+        break;
+      case 'year':
+        startDate = DateTime(now.year, 1, 1);
+        periodLabel = '${now.year}-yil';
+        break;
+      default:
+        startDate = DateTime(now.year, now.month, 1);
+        periodLabel = 'Bu oy';
+    }
+
+    double income = 0;
+    double expense = 0;
+    final categoryTotals = <String, double>{};
+    int count = 0;
+
+    for (final raw in box.values) {
+      if (raw is! Map) continue;
+      final date = DateTime.tryParse(raw['date']?.toString() ?? '');
+      if (date == null || date.isBefore(startDate)) continue;
+
+      final amount = (raw['amount'] as num?)?.toDouble() ?? 0;
+      final type = raw['type'] as int?;
+      final category = raw['category']?.toString() ?? 'Boshqa';
+      count++;
+
+      if (type == 0) {
+        income += amount;
+      } else {
+        expense += amount;
+        categoryTotals[category] = (categoryTotals[category] ?? 0) + amount;
+      }
+    }
+
+    if (count == 0) {
+      return ActionResult(
+        success: false,
+        message: '$periodLabel uchun yozuvlar topilmadi',
+      );
+    }
+
+    final lines = <String>[
+      '📊 $periodLabel hisoboti:',
+      '',
+      '💰 Kirim: ${income.toStringAsFixed(0)} so\'m',
+      '💸 Chiqim: ${expense.toStringAsFixed(0)} so\'m',
+      '📈 Balans: ${(income - expense).toStringAsFixed(0)} so\'m',
+      '📝 Jami yozuvlar: $count',
+    ];
+
+    if (categoryTotals.isNotEmpty) {
+      lines.add('');
+      lines.add('Xarajat kategoriyalari:');
+      final sorted = categoryTotals.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+      for (final e in sorted.take(5)) {
+        lines.add('  • ${e.key}: ${e.value.toStringAsFixed(0)} so\'m');
+      }
+    }
+
+    return ActionResult(
+      success: true,
+      message: lines.join('\n'),
+    );
+  }
+
+  Future<ActionResult> _listReminders() async {
+    final reminders = ReminderService().getUpcoming();
+    if (reminders.isEmpty) {
+      return const ActionResult(
+        success: true,
+        message: 'Hozircha kutilayotgan eslatmalar yo\'q',
+      );
+    }
+
+    final lines = reminders.take(10).map((r) {
+      final time = '${r.triggerAt.hour.toString().padLeft(2, '0')}:${r.triggerAt.minute.toString().padLeft(2, '0')}';
+      final date = '${r.triggerAt.day}.${r.triggerAt.month}';
+      return '⏰ $date $time — ${r.title}';
+    }).toList();
+
+    return ActionResult(
+      success: true,
+      message: 'Kutilayotgan eslatmalar:\n${lines.join('\n')}',
     );
   }
 
