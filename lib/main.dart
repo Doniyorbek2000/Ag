@@ -15,6 +15,7 @@ import 'providers/theme_provider.dart';
 import 'models/chat_message.dart';
 import 'models/bookkeeping_entry.dart';
 import 'utils/hive_boxes.dart';
+import 'services/reminder_service.dart';
 
 void main() async {
   await CrashReportingService.init(() async {
@@ -24,6 +25,7 @@ void main() async {
     await _initHiveAdapters();
     await AnalyticsService().ensureInitialized();
     await _initNotifications();
+    ReminderService().rescheduleAll();
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,

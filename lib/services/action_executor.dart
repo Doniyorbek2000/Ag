@@ -10,6 +10,7 @@ import 'whatsapp_service.dart';
 import 'weather_service.dart';
 import 'news_service.dart';
 import 'unit_converter_service.dart';
+import 'reminder_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
@@ -525,29 +526,16 @@ class ActionExecutor {
 
     final minutes = int.tryParse(timeStr.replaceAll(RegExp(r'[^\d]'), '')) ?? 5;
 
-    final plugin = FlutterLocalNotificationsPlugin();
-    const androidDetails = AndroidNotificationDetails(
-      'adm_reminders',
-      'Eslatmalar',
-      channelDescription: 'ADM AI eslatmalari',
-      importance: Importance.high,
-      priority: Priority.high,
+    final reminder = await ReminderService().add(
+      title: title,
+      message: message,
+      minutesFromNow: minutes,
     );
-
-    final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-    Future.delayed(Duration(minutes: minutes), () {
-      plugin.show(
-        id,
-        title,
-        message,
-        const NotificationDetails(android: androidDetails),
-      );
-    });
 
     return ActionResult(
       success: true,
       message: '$minutes daqiqadan so\'ng eslatiladi: $title',
+      data: reminder.id,
     );
   }
 
