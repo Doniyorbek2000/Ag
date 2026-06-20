@@ -8,6 +8,7 @@ import '../services/action_executor.dart';
 import '../services/memory_service.dart';
 import '../services/offline_command_service.dart';
 import '../services/analytics_service.dart';
+import '../services/backend_sync_service.dart';
 import '../services/crash_reporting_service.dart';
 import '../models/bookkeeping_entry.dart';
 import '../screens/bookkeeping_screen.dart';
@@ -53,6 +54,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final AiService _aiService = AiService();
   final ActionExecutor _executor = ActionExecutor();
   final MemoryService _memory = MemoryService();
+  final BackendSyncService _sync = BackendSyncService();
   final _uuid = const Uuid();
 
   Box get _box => Hive.box('chats');
@@ -113,6 +115,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
       error: null,
     );
     await _persist(userMsg);
+    _sync.reportMessage(
+      role: 'user',
+      content: text,
+      source: isVoice ? 'voice' : 'mobile',
+    );
     AnalyticsService().track('message_sent', {'isVoice': isVoice});
 
     final online = await _isOnline();
@@ -141,11 +148,14 @@ class ChatNotifier extends StateNotifier<ChatState> {
       }
 
       final memorySummary = _memory.buildContextSummary();
+      final bookkeepingSummary = _buildBookkeepingSummary();
+      final contextParts = [memorySummary, bookkeepingSummary].where((s) => s.isNotEmpty);
+      final fullContext = contextParts.isEmpty ? null : contextParts.join('\n\n');
 
       final response = await _aiService.sendMessage(
         message: text,
         conversationHistory: history,
-        contextInfo: memorySummary.isEmpty ? null : memorySummary,
+        contextInfo: fullContext,
         responseLanguage: _ref.read(appLanguageProvider).code,
       );
 
@@ -164,6 +174,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
           'type': response.action!.type,
           'success': actionResult.success,
         });
+        _sync.reportToolAction(
+          type: response.action!.type,
+          payload: response.action!.params,
+          success: actionResult.success,
+          resultMessage: actionResult.message,
+        );
       }
 
       state = state.copyWith(
@@ -172,6 +188,11 @@ class ChatNotifier extends StateNotifier<ChatState> {
         lastActionResult: actionResult,
       );
       await _persist(aiMsg);
+      _sync.reportMessage(
+        role: 'assistant',
+        content: response.text,
+        source: isVoice ? 'voice' : 'mobile',
+      );
 
       await _ref.read(authProvider.notifier).incrementDailyCall();
     } on AiException catch (e, stackTrace) {
@@ -279,6 +300,48 @@ class ChatNotifier extends StateNotifier<ChatState> {
       success: true,
       message: '$typeLabel qo\'shildi: $title — ${amount.toStringAsFixed(0)} so\'m',
     );
+  }
+
+  String _buildBookkeepingSummary() {
+    final box = Hive.box('bookkeeping');
+    if (box.isEmpty) return '';
+
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    double monthIncome = 0;
+    double monthExpense = 0;
+    final recentItems = <String>[];
+
+    for (final raw in box.values) {
+      if (raw is! Map) continue;
+      final date = DateTime.tryParse(raw['date']?.toString() ?? '');
+      if (date == null || date.isBefore(monthStart)) continue;
+
+      final amount = (raw['amount'] as num?)?.toDouble() ?? 0;
+      final type = raw['type'] as int?;
+      final title = raw['title']?.toString() ?? '';
+
+      if (type == 0) {
+        monthIncome += amount;
+      } else {
+        monthExpense += amount;
+      }
+
+      if (recentItems.length < 5) {
+        final label = type == 0 ? 'kirim' : 'chiqim';
+        recentItems.add('$title: ${amount.toStringAsFixed(0)} so\'m ($label)');
+      }
+    }
+
+    final lines = <String>[
+      'Bu oy kirim: ${monthIncome.toStringAsFixed(0)} so\'m',
+      'Bu oy chiqim: ${monthExpense.toStringAsFixed(0)} so\'m',
+      'Balans: ${(monthIncome - monthExpense).toStringAsFixed(0)} so\'m',
+    ];
+    if (recentItems.isNotEmpty) {
+      lines.add('So\'nggi yozuvlar: ${recentItems.join("; ")}');
+    }
+    return 'BUXGALTERIYA MA\'LUMOTLARI (joriy oy):\n${lines.join("\n")}';
   }
 
   void clearError() {

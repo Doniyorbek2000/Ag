@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +23,7 @@ void main() async {
     await Hive.initFlutter();
     await _initHiveAdapters();
     await AnalyticsService().ensureInitialized();
+    await _initNotifications();
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -41,6 +43,13 @@ void main() async {
 
     runApp(const ProviderScope(child: AdmAiApp()));
   });
+}
+
+Future<void> _initNotifications() async {
+  final plugin = FlutterLocalNotificationsPlugin();
+  const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const settings = InitializationSettings(android: android);
+  await plugin.initialize(settings);
 }
 
 Future<void> _initHiveAdapters() async {
