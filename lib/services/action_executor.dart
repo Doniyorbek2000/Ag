@@ -135,6 +135,22 @@ class ActionExecutor {
       'twitter': 'com.twitter.android',
       'tiktok': 'com.zhiliaoapp.musically',
       'zoom': 'us.zoom.videomeetings',
+      'calendar': 'com.google.android.calendar',
+      'clock': 'com.google.android.deskclock',
+      'notes': 'com.google.android.keep',
+      'files': 'com.google.android.documentsui',
+      'passwords': 'com.google.android.apps.authenticator2',
+      'sheets': 'com.google.android.apps.docs.editors.sheets',
+      'teams': 'com.microsoft.teams',
+      'meet': 'com.google.android.apps.meetings',
+      'skype': 'com.skype.raider',
+      'radio': 'com.xiaomi.midrop',
+      'drive': 'com.google.android.apps.docs',
+      'photos': 'com.google.android.apps.photos',
+      'dialer': 'com.google.android.dialer',
+      'sms': 'com.google.android.apps.messaging',
+      'gallery': 'com.google.android.apps.photos',
+      'settings': 'com.android.settings',
     };
 
     final lowerName = appName.toLowerCase();

@@ -51,6 +51,18 @@ class _AppsHubScreenState extends State<AppsHubScreen> {
       ],
     ),
     AppCategory(
+      name: 'Samaradorlik',
+      icon: '🛠️',
+      apps: [
+        AppEntry(icon: '📅', name: 'Kalendar', package: 'calendar', color: Color(0xFF4285F4)),
+        AppEntry(icon: '⏰', name: 'Soat', package: 'clock', color: Color(0xFF607D8B)),
+        AppEntry(icon: '📝', name: 'Eslatmalar', package: 'notes', color: Color(0xFFFFC107)),
+        AppEntry(icon: '📁', name: 'Fayllar', package: 'files', color: Color(0xFF795548)),
+        AppEntry(icon: '🔐', name: 'Parollar', package: 'passwords', color: Color(0xFF9C27B0)),
+        AppEntry(icon: '📊', name: 'Jadvallar', package: 'sheets', color: Color(0xFF0F9D58)),
+      ],
+    ),
+    AppCategory(
       name: 'Telefon',
       icon: '📱',
       apps: [

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -284,6 +285,38 @@ class _BookkeepingScreenState extends ConsumerState<BookkeepingScreen>
     );
   }
 
+  void _exportBookkeeping() {
+    final entries = ref.read(bookkeepingProvider);
+    if (entries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Yozuvlar yo\'q')),
+      );
+      return;
+    }
+
+    final notifier = ref.read(bookkeepingProvider.notifier);
+    final lines = <String>[
+      'ADM AI Buxgalteriya Hisoboti',
+      '═' * 30,
+      'Jami kirim: ${notifier.totalIncome.toStringAsFixed(0)} so\'m',
+      'Jami chiqim: ${notifier.totalExpense.toStringAsFixed(0)} so\'m',
+      'Balans: ${notifier.balance.toStringAsFixed(0)} so\'m',
+      '═' * 30,
+      '',
+    ];
+
+    for (final e in entries) {
+      final sign = e.type == EntryType.income ? '+' : '-';
+      final date = '${e.date.day}.${e.date.month}.${e.date.year}';
+      lines.add('$date | $sign${e.amount.toStringAsFixed(0)} | ${e.title} (${e.category})');
+    }
+
+    Clipboard.setData(ClipboardData(text: lines.join('\n')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Hisobot nusxalandi')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final notifier = ref.read(bookkeepingProvider.notifier);
@@ -329,18 +362,25 @@ class _BookkeepingScreenState extends ConsumerState<BookkeepingScreen>
   }
 
   Widget _buildHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          'Moliyaviy hisob',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Moliyaviy hisob',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
           ),
-        ),
+          IconButton(
+            onPressed: _exportBookkeeping,
+            icon: const Icon(Icons.file_copy_outlined, color: Colors.white),
+            tooltip: 'Hisobotni nusxalash',
+          ),
+        ],
       ),
     );
   }
