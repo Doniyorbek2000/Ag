@@ -25,6 +25,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _scrollController = ScrollController();
   final _voiceService = VoiceService();
   bool _isVoiceMode = false;
+  String _searchQuery = '';
+  bool _isSearching = false;
 
   @override
   void initState() {
@@ -121,6 +123,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           child: Column(
             children: [
               _buildAppBar(context, user),
+              _buildSearchBar(),
               _buildOfflineBanner(),
               if (chatState.error != null) _buildErrorBanner(chatState.error!),
               Expanded(
@@ -180,6 +183,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) _searchQuery = '';
+              });
+            },
           ),
           IconButton(
             icon: const Icon(Icons.share, color: Colors.white),
@@ -369,16 +381,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
+  Widget _buildSearchBar() {
+    if (!_isSearching) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppTheme.bgCard,
+      child: TextField(
+        autofocus: true,
+        style: const TextStyle(color: Colors.white),
+        onChanged: (v) => setState(() => _searchQuery = v),
+        decoration: const InputDecoration(
+          hintText: 'Suhbatda qidirish...',
+          hintStyle: TextStyle(color: AppTheme.textHint),
+          prefixIcon: Icon(Icons.search, color: AppTheme.textHint),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessageList(ChatState state) {
+    final allMessages = state.messages;
+    final messages = _searchQuery.isEmpty
+        ? allMessages
+        : allMessages.where((m) => m.content.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: state.messages.length + (state.isLoading ? 1 : 0),
+      itemCount: messages.length + (state.isLoading ? 1 : 0),
       itemBuilder: (ctx, i) {
-        if (i == state.messages.length) {
+        if (i == messages.length) {
           return const TypingIndicator();
         }
-        return ChatBubble(message: state.messages[i]);
+        return ChatBubble(message: messages[i]);
       },
     );
   }

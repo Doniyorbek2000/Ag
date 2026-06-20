@@ -218,6 +218,33 @@ class HomeScreen extends ConsumerWidget {
       ),
     ];
 
+    final actions2 = [
+      QuickAction(
+        icon: '🎤',
+        label: 'Ovozli',
+        color: const Color(0xFFE040FB),
+        route: '/voice',
+      ),
+      QuickAction(
+        icon: '📅',
+        label: 'Kalendar',
+        color: const Color(0xFF4285F4),
+        route: '/chat',
+      ),
+      QuickAction(
+        icon: '✉️',
+        label: 'Email',
+        color: const Color(0xFFEA4335),
+        route: '/chat',
+      ),
+      QuickAction(
+        icon: '⏰',
+        label: 'Eslatma',
+        color: const Color(0xFFFF6D00),
+        route: '/chat',
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: Column(
@@ -232,22 +259,44 @@ class HomeScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: actions
-                .map(
-                  (a) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: QuickActionCard(
-                        icon: a.icon,
-                        label: a.label,
-                        color: a.color,
-                        onTap: () => context.go(a.route),
+          Column(
+            children: [
+              Row(
+                children: actions
+                    .map(
+                      (a) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: QuickActionCard(
+                            icon: a.icon,
+                            label: a.label,
+                            color: a.color,
+                            onTap: () => context.go(a.route),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                )
-                .toList(),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: actions2
+                    .map(
+                      (a) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: QuickActionCard(
+                            icon: a.icon,
+                            label: a.label,
+                            color: a.color,
+                            onTap: () => context.go(a.route),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
           ),
         ],
       ),
