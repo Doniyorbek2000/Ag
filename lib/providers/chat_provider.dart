@@ -9,6 +9,8 @@ import '../services/memory_service.dart';
 import '../services/offline_command_service.dart';
 import '../services/analytics_service.dart';
 import '../services/crash_reporting_service.dart';
+import '../models/bookkeeping_entry.dart';
+import '../screens/bookkeeping_screen.dart';
 import 'auth_provider.dart';
 import 'locale_provider.dart';
 
@@ -239,9 +241,44 @@ class ChatNotifier extends StateNotifier<ChatState> {
         final key = action.params['key']?.toString() ?? '';
         await _memory.forget(key);
         return const ActionResult(success: true, message: 'Unutdim.');
+      case 'ADD_EXPENSE':
+      case 'ADD_INCOME':
+        return _addBookkeepingEntry(action);
       default:
         return _executor.execute(action.type, action.params);
     }
+  }
+
+  Future<ActionResult> _addBookkeepingEntry(ActionCommand action) async {
+    final title = action.params['title']?.toString() ?? '';
+    final rawAmount = action.params['amount'];
+    final amount = rawAmount is num
+        ? rawAmount.toDouble()
+        : double.tryParse(rawAmount?.toString() ?? '');
+    final category = action.params['category']?.toString() ?? 'Boshqa';
+    final note = action.params['note']?.toString();
+
+    if (title.isEmpty || amount == null || amount <= 0) {
+      return const ActionResult(
+        success: false,
+        message: 'Kirim/chiqim uchun nom va summani ayting',
+      );
+    }
+
+    final type = action.type == 'ADD_INCOME' ? EntryType.income : EntryType.expense;
+    await _ref.read(bookkeepingProvider.notifier).addEntry(
+      title: title,
+      amount: amount,
+      type: type,
+      category: category,
+      note: note,
+    );
+
+    final typeLabel = type == EntryType.income ? 'Kirim' : 'Chiqim';
+    return ActionResult(
+      success: true,
+      message: '$typeLabel qo\'shildi: $title — ${amount.toStringAsFixed(0)} so\'m',
+    );
   }
 
   void clearError() {

@@ -1,4 +1,5 @@
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -64,6 +65,12 @@ class ActionExecutor {
         return _getNews(params['topic'] as String?);
       case 'CONVERT_UNITS':
         return _convertUnits(params);
+      case 'CREATE_EVENT':
+        return _createCalendarEvent(params);
+      case 'SEND_EMAIL':
+        return _sendEmail(params);
+      case 'SET_REMINDER':
+        return _setReminder(params);
       default:
         return ActionResult(
           success: false,
@@ -415,6 +422,114 @@ class ActionExecutor {
     }
     final fixed = value.toStringAsFixed(4);
     return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
+  }
+
+  Future<ActionResult> _createCalendarEvent(Map<String, dynamic> params) async {
+    final title = params['title'] as String? ?? '';
+    if (title.isEmpty) {
+      return const ActionResult(success: false, message: 'Tadbir nomini ayting');
+    }
+
+    final description = params['description'] as String? ?? '';
+    final location = params['location'] as String? ?? '';
+    final dateStr = params['date'] as String? ?? '';
+    final timeStr = params['time'] as String? ?? '';
+
+    var startTime = DateTime.now();
+    if (dateStr.contains('ertaga') || dateStr.contains('tomorrow')) {
+      startTime = startTime.add(const Duration(days: 1));
+    } else if (dateStr.isNotEmpty && !dateStr.contains('bugun') && !dateStr.contains('today')) {
+      startTime = DateTime.tryParse(dateStr) ?? startTime;
+    }
+
+    if (timeStr.isNotEmpty) {
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        final hour = int.tryParse(parts[0]) ?? startTime.hour;
+        final minute = int.tryParse(parts[1]) ?? 0;
+        startTime = DateTime(startTime.year, startTime.month, startTime.day, hour, minute);
+      }
+    }
+
+    final beginMs = startTime.millisecondsSinceEpoch;
+    final endMs = startTime.add(const Duration(hours: 1)).millisecondsSinceEpoch;
+
+    final intent = AndroidIntent(
+      action: 'android.intent.action.INSERT',
+      data: 'content://com.android.calendar/events',
+      arguments: {
+        'title': title,
+        'description': description,
+        'eventLocation': location,
+        'beginTime': beginMs,
+        'endTime': endMs,
+      },
+    );
+
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Kalendarga qo\'shilmoqda: $title');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Kalendar ochishda xato');
+    }
+  }
+
+  Future<ActionResult> _sendEmail(Map<String, dynamic> params) async {
+    final to = params['to'] as String? ?? '';
+    final subject = params['subject'] as String? ?? '';
+    final body = params['body'] as String? ?? '';
+
+    if (to.isEmpty) {
+      return const ActionResult(success: false, message: 'Email manzilini ayting');
+    }
+
+    final uri = Uri(
+      scheme: 'mailto',
+      path: to,
+      queryParameters: {
+        if (subject.isNotEmpty) 'subject': subject,
+        if (body.isNotEmpty) 'body': body,
+      },
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+      return ActionResult(success: true, message: '$to ga email tayyorlanmoqda');
+    }
+    return const ActionResult(success: false, message: 'Email ilovasi topilmadi');
+  }
+
+  Future<ActionResult> _setReminder(Map<String, dynamic> params) async {
+    final title = params['title'] as String? ?? 'Eslatma';
+    final message = params['message'] as String? ?? title;
+    final timeStr = params['time'] as String? ?? '5';
+
+    final minutes = int.tryParse(timeStr.replaceAll(RegExp(r'[^\d]'), '')) ?? 5;
+
+    final plugin = FlutterLocalNotificationsPlugin();
+    const androidDetails = AndroidNotificationDetails(
+      'adm_reminders',
+      'Eslatmalar',
+      channelDescription: 'ADM AI eslatmalari',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    Future.delayed(Duration(minutes: minutes), () {
+      plugin.show(
+        id,
+        title,
+        message,
+        const NotificationDetails(android: androidDetails),
+      );
+    });
+
+    return ActionResult(
+      success: true,
+      message: '$minutes daqiqadan so\'ng eslatiladi: $title',
+    );
   }
 
   Future<ActionResult> _openMaps(String location) async {
