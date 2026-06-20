@@ -1,4 +1,5 @@
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -71,6 +72,8 @@ class ActionExecutor {
         return _sendEmail(params);
       case 'SET_REMINDER':
         return _setReminder(params);
+      case 'FIND_CONTACT':
+        return _findContact(params['name'] as String? ?? '');
       default:
         return ActionResult(
           success: false,
@@ -529,6 +532,43 @@ class ActionExecutor {
     return ActionResult(
       success: true,
       message: '$minutes daqiqadan so\'ng eslatiladi: $title',
+    );
+  }
+
+  Future<ActionResult> _findContact(String name) async {
+    if (name.isEmpty) {
+      return const ActionResult(success: false, message: 'Kontakt ismini ayting');
+    }
+
+    final status = await Permission.contacts.request();
+    if (status.isDenied) {
+      return const ActionResult(
+        success: false,
+        message: 'Kontaktlar ruxsati berilmagan',
+      );
+    }
+
+    final contacts = await ContactsService.getContacts(
+      query: name,
+      withThumbnails: false,
+    );
+
+    if (contacts.isEmpty) {
+      return ActionResult(
+        success: false,
+        message: '"$name" nomli kontakt topilmadi',
+      );
+    }
+
+    final results = contacts.take(3).map((c) {
+      final phone = c.phones?.firstOrNull?.value ?? 'raqam yo\'q';
+      return '${c.displayName ?? "Nomsiz"}: $phone';
+    }).join('\n');
+
+    return ActionResult(
+      success: true,
+      message: 'Topilgan kontaktlar:\n$results',
+      data: contacts.first.phones?.firstOrNull?.value,
     );
   }
 

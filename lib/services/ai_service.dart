@@ -77,6 +77,7 @@ Amallar turlari:
 - SEND_EMAIL: {to: "email@manzil.com", subject: "mavzu", body: "xat matni"} — email yuborish
 - ADD_EXPENSE: {title: "xarajat nomi", amount: summa, category: "kategoriya", note: "izoh"} — buxgalteriyaga chiqim qo'shish (kategoriyalar: Oziq-ovqat, Transport, Uy-joy, Sog'liq, Ta'lim, Ko'ngilochar, Kiyim-kechak, Kommunal, Telefon, Internet, Boshqa)
 - ADD_INCOME: {title: "daromad nomi", amount: summa, category: "kategoriya", note: "izoh"} — buxgalteriyaga kirim qo'shish (kategoriyalar: Ish haqi, Freelance, Biznes, Investitsiya, Sovg'a, Boshqa)
+- FIND_CONTACT: {name: "kontakt ismi"} — telefon kontaktlaridan qidirish va raqamini topish
 
 UZOQ MUDDATLI XOTIRA:
 Foydalanuvchi senga biror narsani "es ket", "yodingda tut", "eslab qol"

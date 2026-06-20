@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -78,6 +79,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         },
       );
     }
+  }
+
+  void _shareConversation() {
+    final messages = ref.read(chatProvider).messages;
+    if (messages.isEmpty) return;
+
+    final text = messages.map((m) {
+      final who = m.isUser ? 'Men' : 'ADM AI';
+      return '$who: ${m.content}';
+    }).join('\n\n');
+
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Suhbat tarixi nusxalandi'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -161,6 +180,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: () => _shareConversation(),
           ),
           IconButton(
             onPressed: () {
