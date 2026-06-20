@@ -232,4 +232,42 @@ router.post('/broadcasts', (req, res) => {
   return res.status(201).json({ id, recipientCount });
 });
 
+// ---------- Conversations ----------
+router.get('/conversations', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const offset = parseInt(req.query.offset) || 0;
+  const userId = req.query.user_id;
+  const source = req.query.source;
+
+  let sql = `SELECT c.*, u.name as user_name, u.email as user_email
+    FROM conversations c JOIN users u ON c.user_id = u.id`;
+  const conditions = [];
+  const params = [];
+
+  if (userId) { conditions.push(`c.user_id = ?`); params.push(userId); }
+  if (source) { conditions.push(`c.source = ?`); params.push(source); }
+  if (conditions.length) sql += ` WHERE ${conditions.join(' AND ')}`;
+
+  sql += ` ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+
+  const rows = db.prepare(sql).all(...params);
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM conversations`).get().c;
+  return res.json({ conversations: rows, total });
+});
+
+// ---------- Tool actions ----------
+router.get('/tool-actions', (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+  const offset = parseInt(req.query.offset) || 0;
+
+  const rows = db.prepare(`
+    SELECT t.*, u.name as user_name FROM tool_actions t
+    JOIN users u ON t.user_id = u.id
+    ORDER BY t.created_at DESC LIMIT ? OFFSET ?
+  `).all(limit, offset);
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM tool_actions`).get().c;
+  return res.json({ actions: rows, total });
+});
+
 module.exports = router;

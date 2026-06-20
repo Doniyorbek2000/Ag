@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../services/voice_service.dart';
+import '../models/chat_message.dart';
 import '../providers/chat_provider.dart';
 import '../providers/locale_provider.dart';
 
@@ -23,6 +24,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
   late AnimationController _pulseController;
   late AnimationController _waveController;
   final VoiceService _voiceService = VoiceService();
+  final ScrollController _scrollController = ScrollController();
   String _statusText = 'Bosing va gapiring';
 
   @override
@@ -97,6 +99,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
   void dispose() {
     _pulseController.dispose();
     _waveController.dispose();
+    _scrollController.dispose();
     _voiceService.removeListener(_onVoiceChanged);
     super.dispose();
   }
@@ -110,20 +113,13 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
           child: Column(
             children: [
               _buildHeader(context),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildWaveVisualizer(),
-                    const SizedBox(height: 48),
-                    _buildMicButton(),
-                    const SizedBox(height: 32),
-                    _buildStatusText(),
-                    const SizedBox(height: 20),
-                    _buildSuggestions(),
-                  ],
-                ),
-              ),
+              _buildWaveVisualizer(),
+              Expanded(child: _buildConversationView()),
+              _buildSuggestions(),
+              const SizedBox(height: 8),
+              _buildStatusText(),
+              const SizedBox(height: 16),
+              _buildMicButton(),
               _buildLanguageSelector(),
             ],
           ),
@@ -170,7 +166,7 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
 
   Widget _buildWaveVisualizer() {
     return SizedBox(
-      height: 100,
+      height: 60,
       child: AnimatedBuilder(
         animation: _waveController,
         builder: (context, _) {
@@ -180,9 +176,84 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
               isActive: _voiceService.isListening,
               soundLevel: _voiceService.soundLevel,
             ),
-            child: const SizedBox(width: 300, height: 100),
+            child: const SizedBox(width: 300, height: 60),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildConversationView() {
+    final chatState = ref.watch(chatProvider);
+    final messages = chatState.messages;
+
+    if (messages.isEmpty) {
+      return const Center(
+        child: Text(
+          'Suhbat tarixi bo\'sh',
+          style: TextStyle(
+            fontSize: 14,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+      );
+    }
+
+    final recentMessages = messages.length > 10
+        ? messages.sublist(messages.length - 10)
+        : messages;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: recentMessages.length,
+      itemBuilder: (context, index) {
+        return _buildMessageBubble(recentMessages[index]);
+      },
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isUser = message.isUser;
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
+        ),
+        decoration: BoxDecoration(
+          gradient: isUser
+              ? const LinearGradient(
+                  colors: [AppTheme.primaryBlue, AppTheme.primaryPurple],
+                )
+              : null,
+          color: isUser ? null : AppTheme.bgCard,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isUser ? 16 : 4),
+            bottomRight: Radius.circular(isUser ? 4 : 16),
+          ),
+        ),
+        child: Text(
+          message.content,
+          style: TextStyle(
+            color: isUser ? Colors.white : AppTheme.textSecondary,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }
@@ -270,6 +341,11 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
   }
 
   Widget _buildSuggestions() {
+    final chatState = ref.watch(chatProvider);
+    if (chatState.messages.isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final suggestions = [
       'YouTube\'da musiqa qo\'y',
       'Telegramni och',

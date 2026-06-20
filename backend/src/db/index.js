@@ -82,11 +82,32 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL DEFAULT 'mobile',
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS tool_actions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    payload TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'success',
+    result TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
   CREATE INDEX IF NOT EXISTS idx_payments_user ON payments(user_id);
   CREATE INDEX IF NOT EXISTS idx_payments_provider_tx ON payments(provider, provider_tx_id);
+  CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id);
+  CREATE INDEX IF NOT EXISTS idx_tool_actions_user ON tool_actions(user_id);
 `);
 
 // Bootstrap default admin account if none exists
