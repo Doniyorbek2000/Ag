@@ -41,6 +41,14 @@ hisobi avtomatik yaratiladi — production'da darhol parolni almashtiring.
 - `POST /api/payments/payme/create` — Payme checkout havolasini yaratish
 - `POST /api/payments/payme/webhook` — Payme JSON-RPC callback'i (Payme chaqiradi)
 
+### Suhbatlar (Conversation Tracking)
+- `POST /api/conversations` — yangi suhbat xabarini saqlash (source: mobile/voice/call/telegram/whatsapp)
+- `GET /api/conversations` — foydalanuvchi suhbatlari ro'yxati (source, limit, offset filtrlari)
+
+### Amallar (Tool Action Logging)
+- `POST /api/tool-actions` — bajarilgan amalni qayd etish (type, payload, status, result)
+- `GET /api/tool-actions` — foydalanuvchi amallari tarixi (limit, offset)
+
 ### Admin panel (faqat `role = admin`)
 - `GET /api/admin/stats` — umumiy statistika (foydalanuvchilar, daromad, grafiklar)
 - `GET /api/admin/users` — foydalanuvchilar ro'yxati (qidiruv, filtrlash, sahifalash)
@@ -52,6 +60,8 @@ hisobi avtomatik yaratiladi — production'da darhol parolni almashtiring.
 - `PATCH /api/admin/tickets/:id` — murojaat holatini yangilash
 - `GET /api/admin/broadcasts` — yuborilgan xabarnomalar
 - `POST /api/admin/broadcasts` — barcha/tarif bo'yicha xabarnoma yuborish
+- `GET /api/admin/conversations` — barcha suhbatlar (user_id, source filtrlari)
+- `GET /api/admin/tool-actions` — barcha amallar tarixi
 
 ## Google Play xaridlarini server tomonida tasdiqlash
 
