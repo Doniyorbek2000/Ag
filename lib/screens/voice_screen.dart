@@ -183,11 +183,14 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
     );
   }
 
+  int _lastMessageCount = 0;
+
   Widget _buildConversationView() {
     final chatState = ref.watch(chatProvider);
     final messages = chatState.messages;
 
     if (messages.isEmpty) {
+      _lastMessageCount = 0;
       return const Center(
         child: Text(
           'Suhbat tarixi bo\'sh',
@@ -203,15 +206,18 @@ class _VoiceScreenState extends ConsumerState<VoiceScreen>
         ? messages.sublist(messages.length - 10)
         : messages;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    if (messages.length != _lastMessageCount) {
+      _lastMessageCount = messages.length;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
 
     return ListView.builder(
       controller: _scrollController,

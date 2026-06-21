@@ -281,7 +281,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
     final amount = rawAmount is num
         ? rawAmount.toDouble()
         : double.tryParse(rawAmount?.toString() ?? '');
-    final category = action.params['category']?.toString() ?? 'Boshqa';
+    final rawCategory = action.params['category']?.toString() ?? 'Boshqa';
     final note = action.params['note']?.toString();
 
     if (title.isEmpty || amount == null || amount <= 0) {
@@ -292,6 +292,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     }
 
     final type = action.type == 'ADD_INCOME' ? EntryType.income : EntryType.expense;
+    final validCategories = type == EntryType.income ? incomeCategories : expenseCategories;
+    final category = validCategories.contains(rawCategory) ? rawCategory : 'Boshqa';
     await _ref.read(bookkeepingProvider.notifier).addEntry(
       title: title,
       amount: amount,

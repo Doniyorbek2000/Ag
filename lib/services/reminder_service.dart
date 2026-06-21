@@ -89,7 +89,10 @@ class ReminderService {
 
   void _scheduleNotification(Reminder reminder) {
     final delay = reminder.triggerAt.difference(DateTime.now());
-    if (delay.isNegative) return;
+    if (delay.isNegative) {
+      markFired(reminder.id);
+      return;
+    }
 
     final plugin = FlutterLocalNotificationsPlugin();
     const androidDetails = AndroidNotificationDetails(

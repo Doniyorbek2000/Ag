@@ -11,7 +11,9 @@ class OfflineCommandService {
   static const _knownApps = [
     'telegram', 'whatsapp', 'instagram', 'youtube', 'gmail', 'maps',
     'chrome', 'camera', 'calculator', 'spotify', 'netflix', 'facebook',
-    'tiktok',
+    'twitter', 'tiktok', 'zoom', 'calendar', 'clock', 'notes', 'files',
+    'sheets', 'teams', 'meet', 'skype', 'drive', 'photos', 'dialer',
+    'sms', 'gallery', 'settings',
   ];
 
   static final _phoneRegex = RegExp(r'(\+?\d[\d\s\-]{6,}\d)');
@@ -91,6 +93,49 @@ class OfflineCommandService {
         type: 'OPEN_SETTINGS',
         params: {'section': ''},
         replyText: 'Sozlamalar ochilmoqda...',
+      );
+    }
+
+    if (text.contains('uyg\'otgich') ||
+        text.contains('budilnik') ||
+        text.contains('alarm')) {
+      final timeMatch = RegExp(r'(\d{1,2})[:\s](\d{2})').firstMatch(text);
+      final time = timeMatch != null
+          ? '${timeMatch.group(1)}:${timeMatch.group(2)}'
+          : '';
+      return OfflineCommand(
+        type: 'SET_ALARM',
+        params: {'time': time, 'label': 'ADM AI Eslatma'},
+        replyText: 'Uyg\'otgich sozlanmoqda...',
+      );
+    }
+
+    if (text.contains('eslatma') ||
+        text.contains('eslat') ||
+        text.contains('remind')) {
+      final minuteMatch = RegExp(r'(\d+)\s*(minut|min|daqiqa|soat|hour)').firstMatch(text);
+      var minutes = 5;
+      if (minuteMatch != null) {
+        minutes = int.tryParse(minuteMatch.group(1) ?? '') ?? 5;
+        final unit = minuteMatch.group(2) ?? '';
+        if (unit.contains('soat') || unit.contains('hour')) {
+          minutes *= 60;
+        }
+      }
+      return OfflineCommand(
+        type: 'SET_REMINDER',
+        params: {'title': rawText.trim(), 'message': rawText.trim(), 'time': '$minutes'},
+        replyText: '$minutes daqiqadan so\'ng eslatiladi...',
+      );
+    }
+
+    if (text.contains('musiqa') ||
+        text.contains('qo\'shiq') ||
+        text.contains('music')) {
+      return OfflineCommand(
+        type: 'OPEN_APP',
+        params: {'app': 'spotify'},
+        replyText: 'Musiqa ilovasi ochilmoqda...',
       );
     }
 

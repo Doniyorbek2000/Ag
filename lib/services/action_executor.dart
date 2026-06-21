@@ -1,4 +1,5 @@
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:collection/collection.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';

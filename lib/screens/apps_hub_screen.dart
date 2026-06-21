@@ -20,7 +20,7 @@ class _AppsHubScreenState extends State<AppsHubScreen> {
       name: 'Ijtimoiy tarmoqlar',
       icon: '💬',
       apps: [
-        AppEntry(icon: '✈️', name: 'Telegram', package: 'telegram', color: Color(0xFF0088CC)),
+        AppEntry(icon: '📨', name: 'Telegram', package: 'telegram', color: Color(0xFF0088CC)),
         AppEntry(icon: '💬', name: 'WhatsApp', package: 'whatsapp', color: Color(0xFF25D366)),
         AppEntry(icon: '📸', name: 'Instagram', package: 'instagram', color: Color(0xFFE1306C)),
         AppEntry(icon: '📘', name: 'Facebook', package: 'facebook', color: Color(0xFF1877F2)),

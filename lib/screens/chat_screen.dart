@@ -27,6 +27,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isVoiceMode = false;
   String _searchQuery = '';
   bool _isSearching = false;
+  String? _lastSpokenMsgId;
 
   @override
   void initState() {
@@ -110,7 +111,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (next.messages.length != prev?.messages.length) {
         _scrollToBottom();
         final last = next.messages.lastOrNull;
-        if (last != null && !last.isUser) {
+        if (last != null && !last.isUser && last.id != _lastSpokenMsgId) {
+          _lastSpokenMsgId = last.id;
           _voiceService.speak(last.content);
         }
       }
