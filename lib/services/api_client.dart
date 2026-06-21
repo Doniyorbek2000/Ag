@@ -1,10 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Talks to the ADM AI backend (see /backend). Configure [baseUrl] to point
-/// at your deployed server — defaults to a local dev server address.
+/// Talks to the ADM AI backend (see /backend). At build time pass
+/// `--dart-define=API_BASE_URL=https://your-server.com/api` to point at
+/// a production backend; defaults to the Android emulator localhost for
+/// local development.
 class ApiClient {
-  static const String defaultBaseUrl = 'http://10.0.2.2:4000/api';
+  static const String defaultBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:4000/api',
+  );
 
   final Dio _dio;
   String? _token;

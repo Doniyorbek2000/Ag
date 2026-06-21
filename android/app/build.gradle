@@ -2,7 +2,12 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
+}
+
+// Apply google-services plugin only when google-services.json exists,
+// so the project still builds without Firebase during development.
+if (file('src/main/google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
 }
 
 def keystorePropertiesFile = rootProject.file('key.properties')
