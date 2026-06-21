@@ -161,6 +161,8 @@ kerakligini tushuntir).
   Stream<String> sendMessageStream({
     required String message,
     List<Map<String, String>> conversationHistory = const [],
+    String? contextInfo,
+    String responseLanguage = 'uz',
   }) async* {
     try {
       final messages = [
@@ -168,12 +170,21 @@ kerakligini tushuntir).
         {'role': 'user', 'content': message},
       ];
 
+      var systemContent = _systemPrompt;
+      final languageInstruction = _languageInstructions[responseLanguage];
+      if (languageInstruction != null && responseLanguage != 'uz') {
+        systemContent = '$systemContent\n\nTIL: $languageInstruction';
+      }
+      if (contextInfo != null) {
+        systemContent = '$systemContent\n\nQO\'SHIMCHA KONTEKST:\n$contextInfo';
+      }
+
       final response = await _dio.post(
         '/messages',
         data: {
           'model': _model,
           'max_tokens': _maxTokens,
-          'system': _systemPrompt,
+          'system': systemContent,
           'messages': messages,
           'stream': true,
         },

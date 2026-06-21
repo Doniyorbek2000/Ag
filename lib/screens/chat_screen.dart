@@ -14,7 +14,9 @@ import '../widgets/chat_bubble.dart';
 import '../widgets/typing_indicator.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  const ChatScreen({super.key});
+  final String? initialPrompt;
+
+  const ChatScreen({super.key, this.initialPrompt});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -34,6 +36,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _voiceService.initialize();
     _voiceService.addListener(_onVoiceChanged);
+    if (widget.initialPrompt != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _controller.text = widget.initialPrompt!;
+      });
+    }
   }
 
   void _onVoiceChanged() {

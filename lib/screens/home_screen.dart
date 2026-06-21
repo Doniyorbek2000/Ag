@@ -230,18 +230,21 @@ class HomeScreen extends ConsumerWidget {
         label: 'Kalendar',
         color: const Color(0xFF4285F4),
         route: '/chat',
+        extra: const {'prompt': 'Bugungi kundalik rejamga tadbir qo\'sh'},
       ),
       QuickAction(
         icon: '✉️',
         label: 'Email',
         color: const Color(0xFFEA4335),
         route: '/chat',
+        extra: const {'prompt': 'Email yozib yuborishda yordam ber'},
       ),
       QuickAction(
         icon: '⏰',
         label: 'Eslatma',
         color: const Color(0xFFFF6D00),
         route: '/chat',
+        extra: const {'prompt': 'Eslatma qo\'y'},
       ),
     ];
 
@@ -271,7 +274,7 @@ class HomeScreen extends ConsumerWidget {
                             icon: a.icon,
                             label: a.label,
                             color: a.color,
-                            onTap: () => context.go(a.route),
+                            onTap: () => context.go(a.route, extra: a.extra),
                           ),
                         ),
                       ),
@@ -289,7 +292,7 @@ class HomeScreen extends ConsumerWidget {
                             icon: a.icon,
                             label: a.label,
                             color: a.color,
-                            onTap: () => context.go(a.route),
+                            onTap: () => context.go(a.route, extra: a.extra),
                           ),
                         ),
                       ),
@@ -501,12 +504,14 @@ class QuickAction {
   final String label;
   final Color color;
   final String route;
+  final Object? extra;
 
   const QuickAction({
     required this.icon,
     required this.label,
     required this.color,
     required this.route,
+    this.extra,
   });
 }
 

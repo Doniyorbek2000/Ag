@@ -70,7 +70,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/chat',
             name: 'chat',
-            builder: (ctx, state) => const ChatScreen(),
+            builder: (ctx, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return ChatScreen(initialPrompt: extra?['prompt'] as String?);
+            },
           ),
           GoRoute(
             path: '/apps',

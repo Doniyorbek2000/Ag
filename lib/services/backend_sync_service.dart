@@ -25,7 +25,7 @@ class BackendSyncService {
         'content': content,
       });
     } catch (e) {
-      _log.d('Backend sync (conversation) skipped: $e');
+      _log.w('Backend sync (conversation) skipped: $e');
     }
   }
 
@@ -44,7 +44,7 @@ class BackendSyncService {
         if (resultMessage != null) 'result': {'message': resultMessage},
       });
     } catch (e) {
-      _log.d('Backend sync (tool action) skipped: $e');
+      _log.w('Backend sync (tool action) skipped: $e');
     }
   }
 }
