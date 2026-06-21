@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/app_theme.dart';
 import '../services/action_executor.dart';
+import '../services/analytics_service.dart';
 
 class AppsHubScreen extends StatefulWidget {
   const AppsHubScreen({super.key});
@@ -100,6 +101,7 @@ class _AppsHubScreenState extends State<AppsHubScreen> {
   }
 
   Future<void> _openApp(AppEntry app) async {
+    AnalyticsService().track('app_launched', {'app': app.package});
     await _executor.execute('OPEN_APP', {'app': app.package});
   }
 

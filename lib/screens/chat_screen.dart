@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:collection/collection.dart';
@@ -30,6 +31,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   String _searchQuery = '';
   bool _isSearching = false;
   String? _lastSpokenMsgId;
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+    _searchDebounce?.cancel();
     _voiceService.removeListener(_onVoiceChanged);
     super.dispose();
   }
@@ -398,7 +401,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: TextField(
         autofocus: true,
         style: const TextStyle(color: Colors.white),
-        onChanged: (v) => setState(() => _searchQuery = v),
+        onChanged: (v) {
+          _searchDebounce?.cancel();
+          _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+            setState(() => _searchQuery = v);
+          });
+        },
         decoration: const InputDecoration(
           hintText: 'Suhbatda qidirish...',
           hintStyle: TextStyle(color: AppTheme.textHint),

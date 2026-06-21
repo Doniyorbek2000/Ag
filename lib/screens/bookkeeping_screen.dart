@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 import '../models/bookkeeping_entry.dart';
+import '../services/analytics_service.dart';
 
 final bookkeepingProvider = StateNotifierProvider<BookkeepingNotifier, List<BookkeepingEntry>>((ref) {
   return BookkeepingNotifier();
@@ -63,11 +64,16 @@ class BookkeepingNotifier extends StateNotifier<List<BookkeepingEntry>> {
       'note': entry.note,
     });
     state = [entry, ...state];
+    AnalyticsService().track('bookkeeping_entry_added', {
+      'type': type == EntryType.income ? 'income' : 'expense',
+      'category': category,
+    });
   }
 
   Future<void> deleteEntry(String id) async {
     await _box.delete(id);
     state = state.where((e) => e.id != id).toList();
+    AnalyticsService().track('bookkeeping_entry_deleted');
   }
 
   double get totalIncome => state

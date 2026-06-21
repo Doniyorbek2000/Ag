@@ -204,6 +204,7 @@ class AuthNotifier extends StateNotifier<UserState> {
   /// e.g. no network -- so the user can retry instead of losing server-side
   /// history while believing it's gone.
   Future<bool> deleteAccount() async {
+    AnalyticsService().track('account_deleted');
     final api = ApiClient();
     if (api.token != null) {
       try {

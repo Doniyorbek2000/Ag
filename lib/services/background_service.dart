@@ -39,7 +39,11 @@ class AdmBackgroundService {
     });
 
     service.on('voiceActivate').listen((event) {
-      // Handle voice activation from background
+      showNotification(
+        title: 'ADM AI',
+        body: 'Ovozli buyruq uchun bosing',
+        payload: 'voice_activate',
+      );
     });
   }
 

@@ -9,11 +9,11 @@ import '../models/subscription_model.dart';
 ///
 /// Flow: user taps "Subscribe" → Play Store billing sheet opens → on
 /// successful purchase, the raw purchase token is sent to
-/// `POST /api/subscriptions/purchase`, where the backend is meant to
-/// verify it against the Google Play Developer API before activating the
-/// plan (see backend/src/routes/subscriptions.js — that server-side
-/// verification call is explicitly marked TODO since it needs a Google
-/// Cloud service-account key, which can't be provisioned from here).
+/// `POST /api/subscriptions/purchase`, where the backend verifies it
+/// against the Google Play Developer API (see backend/src/services/googlePlay.js).
+/// When `GOOGLE_PLAY_SERVICE_ACCOUNT_KEY` env var points to a valid service-account
+/// JSON key, purchases are fully verified server-side; without it, the backend
+/// trusts the client receipt as a fallback.
 ///
 /// On platforms/builds where Play Billing isn't available (e.g. this repo
 /// has no `google-services.json` / signed release build), [isAvailable]

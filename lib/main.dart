@@ -47,11 +47,20 @@ void main() async {
   });
 }
 
+final _notificationNavigationKey = GlobalKey<NavigatorState>();
+
 Future<void> _initNotifications() async {
   final plugin = FlutterLocalNotificationsPlugin();
   const android = AndroidInitializationSettings('@mipmap/ic_launcher');
   const settings = InitializationSettings(android: android);
-  await plugin.initialize(settings);
+  await plugin.initialize(
+    settings,
+    onDidReceiveNotificationResponse: (response) {
+      if (response.payload == 'voice_activate') {
+        _notificationNavigationKey.currentState?.pushNamed('/voice');
+      }
+    },
+  );
 }
 
 Future<void> _initHiveAdapters() async {

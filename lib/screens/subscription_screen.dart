@@ -8,6 +8,7 @@ import '../providers/auth_provider.dart';
 import '../services/purchase_service.dart';
 import '../services/local_payment_service.dart';
 import '../services/api_client.dart';
+import '../services/analytics_service.dart';
 
 class SubscriptionScreen extends ConsumerStatefulWidget {
   const SubscriptionScreen({super.key});
@@ -445,6 +446,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   }
 
   Future<void> _subscribe(BuildContext context, SubscriptionPlanModel plan) async {
+    AnalyticsService().track('subscription_initiated', {'plan': plan.plan.name});
     if (plan.plan == SubscriptionPlan.free) {
       await ref.read(authProvider.notifier).upgradePlan(plan.plan);
       if (mounted) Navigator.pop(context);
