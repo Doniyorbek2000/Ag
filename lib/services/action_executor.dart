@@ -3,9 +3,12 @@ import 'package:collection/collection.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:logger/logger.dart';
+import 'package:uuid/uuid.dart';
 import 'telegram_service.dart';
 import 'whatsapp_service.dart';
 import 'weather_service.dart';
@@ -76,6 +79,41 @@ class ActionExecutor {
         return _setReminder(params);
       case 'FIND_CONTACT':
         return _findContact(params['name'] as String? ?? '');
+      case 'SET_TIMER':
+        final rawDuration = params['duration'] ?? params['seconds'];
+        return _setTimer(
+          rawDuration is int ? rawDuration : int.tryParse(rawDuration?.toString() ?? '') ?? 300,
+          params['label'] as String? ?? params['message'] as String? ?? 'ADM AI Taymer',
+        );
+      case 'NAVIGATE_TO':
+        return _navigateTo(params['location'] as String? ?? '');
+      case 'SHARE_TEXT':
+        return _shareText(params['text'] as String? ?? '');
+      case 'TRANSLATE_TEXT':
+        return _translateText(
+          params['text'] as String? ?? '',
+          params['from'] as String? ?? 'auto',
+          params['to'] as String? ?? 'uz',
+        );
+      case 'TAKE_NOTE':
+        return _takeNote(
+          params['title'] as String? ?? '',
+          params['content'] as String? ?? '',
+        );
+      case 'GET_NOTES':
+        return _getNotes();
+      case 'DELETE_NOTE':
+        return _deleteNote(params['title'] as String? ?? '');
+      case 'GET_TIME':
+        return _getTime();
+      case 'CALCULATE':
+        return _calculate(params['expression'] as String? ?? '');
+      case 'OPEN_URL':
+        return _openUrl(params['url'] as String? ?? '');
+      case 'TOGGLE_FLASHLIGHT':
+        return _toggleFlashlight();
+      case 'SHOW_DEVICE_INFO':
+        return _showDeviceInfo();
       default:
         return ActionResult(
           success: false,
@@ -587,6 +625,357 @@ class ActionExecutor {
     }
     return ActionResult(success: false, message: 'Xarita ochishda xato');
   }
+
+  // ── SET_TIMER ──────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _setTimer(int seconds, String message) async {
+    final intent = AndroidIntent(
+      action: 'android.intent.action.SET_TIMER',
+      arguments: {
+        'android.intent.extra.alarm.LENGTH': seconds,
+        'android.intent.extra.alarm.MESSAGE': message,
+        'android.intent.extra.alarm.SKIP_UI': true,
+      },
+    );
+    try {
+      await intent.launch();
+      final minutes = seconds >= 60 ? '${seconds ~/ 60} daqiqa' : '$seconds soniya';
+      return ActionResult(success: true, message: 'Taymer sozlandi: $minutes - $message');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Taymer sozlashda xato');
+    }
+  }
+
+  // ── NAVIGATE_TO ────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _navigateTo(String location) async {
+    if (location.isEmpty) {
+      return const ActionResult(success: false, message: 'Manzilni ayting');
+    }
+    final uri = Uri.parse(
+      'google.navigation:q=${Uri.encodeComponent(location)}&mode=d',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'Navigatsiya boshlandi: $location');
+    } catch (e) {
+      // Fallback to Google Maps web URL
+      final webUri = Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(location)}',
+      );
+      if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+        return ActionResult(success: true, message: 'Xaritada yo\'nalish: $location');
+      }
+      return ActionResult(success: false, message: 'Navigatsiya ochishda xato');
+    }
+  }
+
+  // ── SHARE_TEXT ─────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _shareText(String text) async {
+    if (text.isEmpty) {
+      return const ActionResult(success: false, message: 'Ulashish uchun matn ayting');
+    }
+    final intent = AndroidIntent(
+      action: 'android.intent.action.SEND',
+      type: 'text/plain',
+      arguments: {
+        'android.intent.extra.TEXT': text,
+      },
+    );
+    try {
+      await intent.launch();
+      return ActionResult(success: true, message: 'Ulashish oynasi ochildi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Ulashishda xato');
+    }
+  }
+
+  // ── TRANSLATE_TEXT ─────────────────────────────────────────────────────────
+
+  Future<ActionResult> _translateText(String text, String from, String to) async {
+    if (text.isEmpty) {
+      return const ActionResult(success: false, message: 'Tarjima qilish uchun matn ayting');
+    }
+    final uri = Uri.parse(
+      'https://translate.google.com/?sl=${Uri.encodeComponent(from)}&tl=${Uri.encodeComponent(to)}&text=${Uri.encodeComponent(text)}',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return ActionResult(success: true, message: 'Google Tarjimon ochildi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Tarjimon ochishda xato');
+    }
+  }
+
+  // ── TAKE_NOTE ──────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _takeNote(String title, String content) async {
+    if (title.isEmpty && content.isEmpty) {
+      return const ActionResult(success: false, message: 'Eslatma sarlavhasi yoki matnini ayting');
+    }
+    try {
+      final box = await Hive.openBox('notes');
+      final id = const Uuid().v4();
+      final note = {
+        'id': id,
+        'title': title.isNotEmpty ? title : 'Eslatma',
+        'content': content,
+        'created_at': DateTime.now().toIso8601String(),
+      };
+      await box.put(id, note);
+      return ActionResult(
+        success: true,
+        message: 'Eslatma saqlandi: ${note['title']}',
+        data: note,
+      );
+    } catch (e) {
+      return ActionResult(success: false, message: 'Eslatma saqlashda xato: $e');
+    }
+  }
+
+  // ── GET_NOTES ──────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _getNotes() async {
+    try {
+      final box = await Hive.openBox('notes');
+      if (box.isEmpty) {
+        return const ActionResult(success: true, message: 'Hozircha eslatmalar yo\'q');
+      }
+      final notes = box.values
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      notes.sort((a, b) =>
+          (b['created_at'] as String).compareTo(a['created_at'] as String));
+      final lastNotes = notes.take(10).toList();
+      final summary = lastNotes
+          .map((n) => '• ${n['title']}: ${n['content']}')
+          .join('\n');
+      return ActionResult(
+        success: true,
+        message: 'Eslatmalar (${lastNotes.length}):\n$summary',
+        data: lastNotes,
+      );
+    } catch (e) {
+      return ActionResult(success: false, message: 'Eslatmalarni o\'qishda xato: $e');
+    }
+  }
+
+  // ── DELETE_NOTE ────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _deleteNote(String title) async {
+    if (title.isEmpty) {
+      return const ActionResult(success: false, message: 'O\'chirish uchun eslatma sarlavhasini ayting');
+    }
+    try {
+      final box = await Hive.openBox('notes');
+      final lowerTitle = title.toLowerCase();
+      String? keyToDelete;
+      for (final key in box.keys) {
+        final note = Map<String, dynamic>.from(box.get(key) as Map);
+        if ((note['title'] as String).toLowerCase() == lowerTitle) {
+          keyToDelete = key as String;
+          break;
+        }
+      }
+      if (keyToDelete != null) {
+        await box.delete(keyToDelete);
+        return ActionResult(success: true, message: 'Eslatma o\'chirildi: $title');
+      }
+      return ActionResult(success: false, message: '"$title" nomli eslatma topilmadi');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Eslatmani o\'chirishda xato: $e');
+    }
+  }
+
+  // ── GET_TIME ───────────────────────────────────────────────────────────────
+
+  static const _uzbekDays = [
+    'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba',
+    'Juma', 'Shanba', 'Yakshanba',
+  ];
+  static const _uzbekMonths = [
+    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr',
+  ];
+
+  Future<ActionResult> _getTime() async {
+    final now = DateTime.now();
+    final dayName = _uzbekDays[now.weekday - 1];
+    final monthName = _uzbekMonths[now.month - 1];
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    final message =
+        'Hozir $hour:$minute, $dayName, ${now.day}-$monthName ${now.year}-yil';
+    return ActionResult(success: true, message: message);
+  }
+
+  // ── CALCULATE ──────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _calculate(String expression) async {
+    if (expression.isEmpty) {
+      return const ActionResult(success: false, message: 'Hisoblash uchun ifoda ayting');
+    }
+    try {
+      final result = _evaluateExpression(expression);
+      final formatted = result == result.roundToDouble() && result.abs() < 1e15
+          ? result.toStringAsFixed(0)
+          : result.toString();
+      return ActionResult(success: true, message: '$expression = $formatted');
+    } catch (e) {
+      return ActionResult(success: false, message: 'Hisoblashda xato: ifodani tekshiring');
+    }
+  }
+
+  double _evaluateExpression(String expr) {
+    expr = expr.replaceAll(' ', '')
+        .replaceAll('х', '*')  // Cyrillic х
+        .replaceAll('×', '*')  // ×
+        .replaceAll('÷', '/'); // ÷
+    return _parseExpression(expr, 0).value;
+  }
+
+  _ParseResult _parseExpression(String expr, int pos) {
+    var result = _parseTerm(expr, pos);
+    var value = result.value;
+    var i = result.pos;
+    while (i < expr.length && (expr[i] == '+' || expr[i] == '-')) {
+      final op = expr[i];
+      i++;
+      result = _parseTerm(expr, i);
+      i = result.pos;
+      if (op == '+') {
+        value += result.value;
+      } else {
+        value -= result.value;
+      }
+    }
+    return _ParseResult(value, i);
+  }
+
+  _ParseResult _parseTerm(String expr, int pos) {
+    var result = _parseFactor(expr, pos);
+    var value = result.value;
+    var i = result.pos;
+    while (i < expr.length && (expr[i] == '*' || expr[i] == '/')) {
+      final op = expr[i];
+      i++;
+      result = _parseFactor(expr, i);
+      i = result.pos;
+      if (op == '*') {
+        value *= result.value;
+      } else {
+        if (result.value == 0) throw Exception('Division by zero');
+        value /= result.value;
+      }
+    }
+    return _ParseResult(value, i);
+  }
+
+  _ParseResult _parseFactor(String expr, int pos) {
+    if (pos < expr.length && expr[pos] == '(') {
+      final result = _parseExpression(expr, pos + 1);
+      // skip closing ')'
+      final newPos = result.pos < expr.length && expr[result.pos] == ')'
+          ? result.pos + 1
+          : result.pos;
+      return _ParseResult(result.value, newPos);
+    }
+
+    // Handle unary minus
+    if (pos < expr.length && expr[pos] == '-') {
+      final result = _parseFactor(expr, pos + 1);
+      return _ParseResult(-result.value, result.pos);
+    }
+
+    // Parse number
+    var i = pos;
+    while (i < expr.length &&
+        (expr.codeUnitAt(i) >= 48 && expr.codeUnitAt(i) <= 57 || expr[i] == '.')) {
+      i++;
+    }
+    if (i == pos) throw FormatException('Expected number at position $pos');
+    final value = double.parse(expr.substring(pos, i));
+    return _ParseResult(value, i);
+  }
+
+  // ── OPEN_URL ───────────────────────────────────────────────────────────────
+
+  Future<ActionResult> _openUrl(String url) async {
+    if (url.isEmpty) {
+      return const ActionResult(success: false, message: 'URL manzilini ayting');
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://$url';
+    }
+    final uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return ActionResult(success: true, message: 'Sahifa ochildi: $url');
+      }
+      return ActionResult(success: false, message: 'URL ochishda xato: $url');
+    } catch (e) {
+      return ActionResult(success: false, message: 'URL ochishda xato: $url');
+    }
+  }
+
+  // ── TOGGLE_FLASHLIGHT ─────────────────────────────────────────────────────
+
+  Future<ActionResult> _toggleFlashlight() async {
+    try {
+      final intent = AndroidIntent(
+        action: 'android.intent.action.MAIN',
+        package: 'com.android.systemui',
+        componentName: 'com.android.systemui.flashlight.FlashlightActivity',
+        flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+      );
+      await intent.launch();
+      return const ActionResult(success: true, message: 'Fonar yoqildi/o\'chirildi');
+    } catch (e) {
+      // Fallback: open display settings
+      try {
+        final fallbackIntent = AndroidIntent(
+          action: 'android.settings.DISPLAY_SETTINGS',
+        );
+        await fallbackIntent.launch();
+        return const ActionResult(
+          success: true,
+          message: 'Fonar to\'g\'ridan-to\'g\'ri boshqarib bo\'lmadi, displey sozlamalari ochildi',
+        );
+      } catch (e2) {
+        return const ActionResult(success: false, message: 'Fonarni boshqarishda xato');
+      }
+    }
+  }
+
+  // ── SHOW_DEVICE_INFO ──────────────────────────────────────────────────────
+
+  Future<ActionResult> _showDeviceInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final now = DateTime.now();
+      final dayName = _uzbekDays[now.weekday - 1];
+      final message = '''Qurilma ma'lumotlari:
+• Ilova nomi: ${packageInfo.appName}
+• Versiya: ${packageInfo.version}
+• Build raqami: ${packageInfo.buildNumber}
+• Qurilma vaqti: ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}, $dayName, ${now.day}-${_uzbekMonths[now.month - 1]} ${now.year}''';
+      return ActionResult(
+        success: true,
+        message: message,
+        data: {
+          'appName': packageInfo.appName,
+          'version': packageInfo.version,
+          'buildNumber': packageInfo.buildNumber,
+          'deviceTime': now.toIso8601String(),
+        },
+      );
+    } catch (e) {
+      return ActionResult(success: false, message: 'Qurilma ma\'lumotlarini olishda xato: $e');
+    }
+  }
 }
 
 class ActionResult {
@@ -599,4 +988,11 @@ class ActionResult {
     required this.message,
     this.data,
   });
+}
+
+class _ParseResult {
+  final double value;
+  final int pos;
+
+  const _ParseResult(this.value, this.pos);
 }

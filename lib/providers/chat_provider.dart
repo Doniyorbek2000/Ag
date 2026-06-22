@@ -270,6 +270,12 @@ class ChatNotifier extends StateNotifier<ChatState> {
         return _generateReport(action);
       case 'GET_REMINDERS':
         return _listReminders();
+      case 'TAKE_NOTE':
+        return _takeNote(action);
+      case 'GET_NOTES':
+        return _getNotes();
+      case 'DELETE_NOTE':
+        return _deleteNote(action);
       default:
         return _executor.execute(action.type, action.params);
     }
@@ -410,6 +416,97 @@ class ChatNotifier extends StateNotifier<ChatState> {
     return ActionResult(
       success: true,
       message: 'Kutilayotgan eslatmalar:\n${lines.join('\n')}',
+    );
+  }
+
+  Future<ActionResult> _takeNote(ActionCommand action) async {
+    final title = action.params['title']?.toString() ?? '';
+    final content = action.params['content']?.toString() ?? title;
+
+    if (title.isEmpty && content.isEmpty) {
+      return const ActionResult(
+        success: false,
+        message: 'Qayd matni bo\'sh — nima yozib qo\'yay?',
+      );
+    }
+
+    final box = Hive.box('notes');
+    final id = _uuid.v4();
+    await box.put(id, {
+      'id': id,
+      'title': title.isNotEmpty ? title : content.substring(0, content.length.clamp(0, 50)),
+      'content': content,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
+    return ActionResult(
+      success: true,
+      message: 'Qayd saqlandi: ${title.isNotEmpty ? title : content.substring(0, content.length.clamp(0, 50))}',
+    );
+  }
+
+  Future<ActionResult> _getNotes() async {
+    final box = Hive.box('notes');
+    if (box.isEmpty) {
+      return const ActionResult(
+        success: true,
+        message: 'Hozircha hech qanday qayd yo\'q',
+      );
+    }
+
+    final notes = box.values.whereType<Map>().toList();
+    notes.sort((a, b) {
+      final dateA = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(2000);
+      final dateB = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(2000);
+      return dateB.compareTo(dateA);
+    });
+
+    final lines = notes.take(10).map((n) {
+      final title = n['title']?.toString() ?? 'Nomsiz';
+      final date = DateTime.tryParse(n['created_at']?.toString() ?? '');
+      final dateStr = date != null ? '${date.day}.${date.month.toString().padLeft(2, '0')}' : '';
+      return '📝 $dateStr — $title';
+    }).toList();
+
+    return ActionResult(
+      success: true,
+      message: 'Qaydlar (${notes.length} ta):\n${lines.join('\n')}',
+    );
+  }
+
+  Future<ActionResult> _deleteNote(ActionCommand action) async {
+    final title = action.params['title']?.toString().toLowerCase() ?? '';
+    if (title.isEmpty) {
+      return const ActionResult(
+        success: false,
+        message: 'Qaysi qaydni o\'chirishim kerak?',
+      );
+    }
+
+    final box = Hive.box('notes');
+    String? keyToDelete;
+    for (final key in box.keys) {
+      final note = box.get(key);
+      if (note is Map) {
+        final noteTitle = note['title']?.toString().toLowerCase() ?? '';
+        if (noteTitle.contains(title)) {
+          keyToDelete = key.toString();
+          break;
+        }
+      }
+    }
+
+    if (keyToDelete == null) {
+      return ActionResult(
+        success: false,
+        message: '"$title" nomli qayd topilmadi',
+      );
+    }
+
+    await box.delete(keyToDelete);
+    return const ActionResult(
+      success: true,
+      message: 'Qayd o\'chirildi',
     );
   }
 

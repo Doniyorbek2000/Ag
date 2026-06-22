@@ -13,4 +13,5 @@ const allHiveBoxNames = [
   MemoryService.boxName,
   AnalyticsService.boxName,
   ReminderService.boxName,
+  'notes',
 ];
