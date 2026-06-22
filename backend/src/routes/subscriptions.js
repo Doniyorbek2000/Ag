@@ -24,52 +24,57 @@ const purchaseSchema = z.object({
 });
 
 router.post('/purchase', async (req, res) => {
-  const parsed = purchaseSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: 'Xarid ma\'lumotlari noto\'g\'ri' });
+  try {
+    const parsed = purchaseSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Xarid ma\'lumotlari noto\'g\'ri' });
 
-  const { plan, provider, purchaseToken, productId } = parsed.data;
+    const { plan, provider, purchaseToken, productId } = parsed.data;
 
-  let expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    let expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  if (provider === 'google_play') {
-    if (!purchaseToken || !productId) {
-      return res.status(400).json({ error: 'purchaseToken va productId talab qilinadi' });
-    }
-
-    if (googlePlay.isConfigured()) {
-      const result = await googlePlay.verifySubscriptionPurchase({
-        packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.admai.app',
-        productId,
-        purchaseToken,
-      });
-
-      if (!result || !result.valid) {
-        return res.status(402).json({ error: 'Xarid Google Play tomonidan tasdiqlanmadi' });
+    if (provider === 'google_play') {
+      if (!purchaseToken || !productId) {
+        return res.status(400).json({ error: 'purchaseToken va productId talab qilinadi' });
       }
 
-      if (result.expiryTimeMillis) {
-        expiresAt = new Date(result.expiryTimeMillis).toISOString();
+      if (googlePlay.isConfigured()) {
+        const result = await googlePlay.verifySubscriptionPurchase({
+          packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || 'com.admai.app',
+          productId,
+          purchaseToken,
+        });
+
+        if (!result || !result.valid) {
+          return res.status(402).json({ error: 'Xarid Google Play tomonidan tasdiqlanmadi' });
+        }
+
+        if (result.expiryTimeMillis) {
+          expiresAt = new Date(result.expiryTimeMillis).toISOString();
+        }
+      } else {
+        console.warn(
+          '[subscriptions] GOOGLE_PLAY_SERVICE_ACCOUNT_KEY sozlanmagan -- ' +
+          'xarid mijoz tomonidan yuborilgan kvitansiyaga ishonib faollashtirilmoqda'
+        );
       }
-    } else {
-      console.warn(
-        '[subscriptions] GOOGLE_PLAY_SERVICE_ACCOUNT_KEY sozlanmagan -- ' +
-        'xarid mijoz tomonidan yuborilgan kvitansiyaga ishonib faollashtirilmoqda'
-      );
     }
+
+    const id = uuidv4();
+
+    db.prepare(`
+      INSERT INTO subscriptions (id, user_id, plan, status, provider, provider_ref, expires_at, amount)
+      VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
+    `).run(id, req.user.id, plan, provider, purchaseToken || null, expiresAt, PLAN_PRICES[plan]);
+
+    db.prepare(`
+      UPDATE users SET plan = ?, plan_expires_at = ?, updated_at = datetime('now') WHERE id = ?
+    `).run(plan, expiresAt, req.user.id);
+
+    return res.status(201).json({ subscriptionId: id, plan, expiresAt });
+  } catch (err) {
+    console.error('[subscriptions] Purchase error:', err);
+    return res.status(500).json({ error: 'Xarid jarayonida xato yuz berdi' });
   }
-
-  const id = uuidv4();
-
-  db.prepare(`
-    INSERT INTO subscriptions (id, user_id, plan, status, provider, provider_ref, expires_at, amount)
-    VALUES (?, ?, ?, 'active', ?, ?, ?, ?)
-  `).run(id, req.user.id, plan, provider, purchaseToken || null, expiresAt, PLAN_PRICES[plan]);
-
-  db.prepare(`
-    UPDATE users SET plan = ?, plan_expires_at = ?, updated_at = datetime('now') WHERE id = ?
-  `).run(plan, expiresAt, req.user.id);
-
-  return res.status(201).json({ subscriptionId: id, plan, expiresAt });
 });
 
 router.get('/me', (req, res) => {
