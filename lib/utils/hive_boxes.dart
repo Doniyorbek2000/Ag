@@ -1,7 +1,9 @@
 import '../services/analytics_service.dart';
+import '../services/habit_service.dart';
 import '../services/health_tracker_service.dart';
 import '../services/memory_service.dart';
 import '../services/reminder_service.dart';
+import '../services/scheduled_service.dart';
 
 /// Every Hive box the app opens at startup ([main.dart]) and wipes on
 /// account deletion ([AuthNotifier.deleteAccount]) -- kept in one place so
@@ -20,4 +22,6 @@ const allHiveBoxNames = [
   'goals',
   HealthTrackerService.boxName,
   'budget',
+  HabitService.boxName,
+  ScheduledService.boxName,
 ];

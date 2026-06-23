@@ -24,6 +24,12 @@ import 'fun_content_service.dart';
 import 'device_control_service.dart';
 import 'location_search_service.dart';
 import 'finance_tools_service.dart';
+import 'habit_service.dart';
+import 'scheduled_service.dart';
+import 'daily_briefing_service.dart';
+import 'data_export_service.dart';
+import 'contact_manager_service.dart';
+import 'qr_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
@@ -36,6 +42,12 @@ class ActionExecutor {
   final DeviceControlService _device = DeviceControlService();
   final LocationSearchService _location = LocationSearchService();
   final FinanceToolsService _finance = FinanceToolsService();
+  final HabitService _habit = HabitService();
+  final ScheduledService _scheduled = ScheduledService();
+  final DailyBriefingService _briefing = DailyBriefingService();
+  final DataExportService _export = DataExportService();
+  final ContactManagerService _contact = ContactManagerService();
+  final QrService _qr = QrService();
 
   static final ActionExecutor _instance = ActionExecutor._internal();
   factory ActionExecutor() => _instance;
@@ -538,6 +550,103 @@ class ActionExecutor {
         return _location.openUzum();
       case 'OPEN_MYID':
         return _location.openMyId();
+
+      // ── HABITS ──
+      case 'CREATE_HABIT':
+        return _habit.createHabit(name: params['name'] as String? ?? '');
+      case 'LOG_HABIT':
+        return _habit.logHabit(name: params['name'] as String? ?? '');
+      case 'GET_HABITS':
+        return _habit.getHabits();
+      case 'GET_HABIT_STATS':
+        return _habit.getHabitStats(params['name'] as String? ?? '');
+      case 'DELETE_HABIT':
+        return _habit.deleteHabit(params['name'] as String? ?? '');
+      case 'RESET_HABIT':
+        return _habit.resetHabit(params['name'] as String? ?? '');
+
+      // ── SCHEDULED ACTIONS ──
+      case 'SCHEDULE_ACTION':
+        final triggerAt = DateTime.tryParse(params['triggerAt']?.toString() ?? '');
+        if (triggerAt == null) {
+          return const ActionResult(success: false, message: 'Vaqtni to\'g\'ri formatda kiriting (YYYY-MM-DD HH:MM)');
+        }
+        return _scheduled.scheduleAction(
+          actionType: params['actionType'] as String? ?? '',
+          params: Map<String, dynamic>.from(params['actionParams'] as Map? ?? {}),
+          triggerAt: triggerAt,
+          description: params['description'] as String?,
+        );
+      case 'GET_SCHEDULED':
+        return _scheduled.getScheduledActions();
+      case 'CANCEL_SCHEDULED':
+        return _scheduled.cancelScheduledAction(params['description'] as String? ?? '');
+      case 'GET_SCHEDULE_HISTORY':
+        return _scheduled.getHistory();
+      case 'CLEAR_SCHEDULED':
+        return _scheduled.clearPending();
+
+      // ── DAILY BRIEFING ──
+      case 'GET_DAILY_BRIEFING':
+        return _briefing.getDailyBriefing();
+      case 'GET_QUICK_STATUS':
+        return _briefing.getQuickStatus();
+
+      // ── DATA EXPORT ──
+      case 'EXPORT_BOOKKEEPING':
+        return _export.exportBookkeeping();
+      case 'EXPORT_HEALTH':
+        return _export.exportHealthLog();
+      case 'EXPORT_NOTES':
+        return _export.exportNotes();
+      case 'EXPORT_TODOS':
+        return _export.exportTodos();
+      case 'EXPORT_ALL':
+        return _export.exportAll();
+
+      // ── CONTACT MANAGEMENT ──
+      case 'ADD_CONTACT':
+        return _contact.addContact(
+          name: params['name'] as String? ?? '',
+          phone: params['phone'] as String?,
+          email: params['email'] as String?,
+          company: params['company'] as String?,
+        );
+      case 'LIST_CONTACTS':
+        return _contact.listContacts(
+          limit: (params['limit'] as num?)?.toInt() ?? 10,
+          query: params['query'] as String?,
+        );
+      case 'GET_CONTACT_COUNT':
+        return _contact.getContactCount();
+      case 'DELETE_CONTACT':
+        return _contact.deleteContact(params['name'] as String? ?? '');
+
+      // ── QR CODE ──
+      case 'GENERATE_QR':
+        return _qr.generateQr(params['data'] as String? ?? '');
+      case 'SCAN_QR':
+        return _qr.scanQr();
+      case 'GENERATE_WIFI_QR':
+        return _qr.generateWifiQr(
+          ssid: params['ssid'] as String? ?? '',
+          password: params['password'] as String? ?? '',
+          encryption: params['encryption'] as String? ?? 'WPA',
+        );
+      case 'GENERATE_CONTACT_QR':
+        return _qr.generateContactQr(
+          name: params['name'] as String? ?? '',
+          phone: params['phone'] as String?,
+          email: params['email'] as String?,
+        );
+
+      // ── POMODORO (uses SET_TIMER) ──
+      case 'POMODORO_START':
+        final pomodoroMinutes = (params['minutes'] as num?)?.toInt() ?? 25;
+        return _setTimer(
+          pomodoroMinutes * 60,
+          params['label'] as String? ?? 'Pomodoro',
+        );
 
       default:
         return ActionResult(
