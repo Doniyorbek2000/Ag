@@ -15,9 +15,27 @@ import 'weather_service.dart';
 import 'news_service.dart';
 import 'unit_converter_service.dart';
 import 'reminder_service.dart';
+import 'todo_service.dart';
+import 'health_tracker_service.dart';
+import 'math_tools_service.dart';
+import 'text_tools_service.dart';
+import 'date_tools_service.dart';
+import 'fun_content_service.dart';
+import 'device_control_service.dart';
+import 'location_search_service.dart';
+import 'finance_tools_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
+  final TodoService _todo = TodoService();
+  final HealthTrackerService _health = HealthTrackerService();
+  final MathToolsService _math = MathToolsService();
+  final TextToolsService _text = TextToolsService();
+  final DateToolsService _date = DateToolsService();
+  final FunContentService _fun = FunContentService();
+  final DeviceControlService _device = DeviceControlService();
+  final LocationSearchService _location = LocationSearchService();
+  final FinanceToolsService _finance = FinanceToolsService();
 
   static final ActionExecutor _instance = ActionExecutor._internal();
   factory ActionExecutor() => _instance;
@@ -114,6 +132,413 @@ class ActionExecutor {
         return _toggleFlashlight();
       case 'SHOW_DEVICE_INFO':
         return _showDeviceInfo();
+
+      // ── TODO / SHOPPING / GOALS ──
+      case 'CREATE_TODO':
+        return _todo.createTodo(
+          title: params['title'] as String? ?? '',
+          description: params['description'] as String?,
+          priority: params['priority'] as String? ?? 'normal',
+          dueDate: params['dueDate'] as String?,
+        );
+      case 'GET_TODOS':
+        return _todo.getTodos();
+      case 'COMPLETE_TODO':
+        return _todo.completeTodo(params['title'] as String? ?? '');
+      case 'DELETE_TODO':
+        return _todo.deleteTodo(params['title'] as String? ?? '');
+      case 'ADD_SHOPPING_ITEM':
+        return _todo.addShoppingItem(
+          item: params['item'] as String? ?? '',
+          quantity: (params['quantity'] as num?)?.toInt() ?? 1,
+          note: params['note'] as String?,
+        );
+      case 'GET_SHOPPING_LIST':
+        return _todo.getShoppingList();
+      case 'DELETE_SHOPPING_ITEM':
+        return _todo.deleteShoppingItem(params['item'] as String? ?? '');
+      case 'CLEAR_SHOPPING_LIST':
+        return _todo.clearShoppingList();
+      case 'MARK_SHOPPING_BOUGHT':
+        return _todo.markShoppingItemBought(params['item'] as String? ?? '');
+      case 'SET_GOAL':
+        return _todo.setGoal(
+          title: params['title'] as String? ?? '',
+          target: params['target'] as String?,
+          deadline: params['deadline'] as String?,
+        );
+      case 'GET_GOALS':
+        return _todo.getGoals();
+      case 'COMPLETE_GOAL':
+        return _todo.completeGoal(params['title'] as String? ?? '');
+      case 'DELETE_GOAL':
+        return _todo.deleteGoal(params['title'] as String? ?? '');
+
+      // ── HEALTH TRACKING ──
+      case 'LOG_WATER':
+        return _health.logWater(glasses: (params['glasses'] as num?)?.toInt() ?? 1);
+      case 'GET_WATER_LOG':
+        return _health.getWaterLog();
+      case 'LOG_WEIGHT':
+        final w = params['kg'] is num ? (params['kg'] as num).toDouble() : double.tryParse(params['kg']?.toString() ?? '') ?? 0;
+        return _health.logWeight(kg: w);
+      case 'GET_WEIGHT_LOG':
+        return _health.getWeightLog();
+      case 'LOG_SLEEP':
+        final h = params['hours'] is num ? (params['hours'] as num).toDouble() : double.tryParse(params['hours']?.toString() ?? '') ?? 0;
+        return _health.logSleep(hours: h, quality: params['quality'] as String?);
+      case 'GET_SLEEP_LOG':
+        return _health.getSleepLog();
+      case 'LOG_MOOD':
+        return _health.logMood(mood: params['mood'] as String? ?? 'normal', note: params['note'] as String?);
+      case 'GET_MOOD_LOG':
+        return _health.getMoodLog();
+      case 'LOG_EXERCISE':
+        return _health.logExercise(
+          type: params['type'] as String? ?? 'mashq',
+          minutes: (params['minutes'] as num?)?.toInt() ?? 30,
+          calories: (params['calories'] as num?)?.toInt(),
+        );
+      case 'GET_EXERCISE_LOG':
+        return _health.getExerciseLog();
+      case 'GET_HEALTH_SUMMARY':
+        return _health.getDailyHealthSummary();
+
+      // ── MATH TOOLS ──
+      case 'RANDOM_NUMBER':
+        return _math.randomNumber(
+          min: (params['min'] as num?)?.toInt() ?? 1,
+          max: (params['max'] as num?)?.toInt() ?? 100,
+        );
+      case 'DICE_ROLL':
+        return _math.diceRoll(sides: (params['sides'] as num?)?.toInt() ?? 6);
+      case 'COIN_FLIP':
+        return _math.coinFlip();
+      case 'FIBONACCI':
+        return _math.fibonacci((params['n'] as num?)?.toInt() ?? 10);
+      case 'FACTORIAL':
+        return _math.factorial((params['n'] as num?)?.toInt() ?? 5);
+      case 'IS_PRIME':
+        return _math.isPrime((params['n'] as num?)?.toInt() ?? 0);
+      case 'CONVERT_BASE':
+        return _math.convertBase(
+          value: params['value'] as String? ?? '',
+          fromBase: (params['fromBase'] as num?)?.toInt() ?? 10,
+          toBase: (params['toBase'] as num?)?.toInt() ?? 2,
+        );
+      case 'CALCULATE_BMI':
+        final weight = params['weight'] is num ? (params['weight'] as num).toDouble() : double.tryParse(params['weight']?.toString() ?? '') ?? 0;
+        final height = params['height'] is num ? (params['height'] as num).toDouble() : double.tryParse(params['height']?.toString() ?? '') ?? 0;
+        return _math.calculateBMI(weightKg: weight, heightCm: height);
+      case 'CALCULATE_CALORIES':
+        return _math.calculateCalories(
+          weightKg: (params['weight'] as num?)?.toDouble() ?? 70,
+          heightCm: (params['height'] as num?)?.toDouble() ?? 170,
+          age: (params['age'] as num?)?.toInt() ?? 25,
+          gender: params['gender'] as String? ?? 'erkak',
+          activity: params['activity'] as String? ?? 'moderate',
+        );
+      case 'CALCULATE_AREA':
+        return _math.calculateArea(
+          shape: params['shape'] as String? ?? '',
+          dimensions: Map<String, double>.from((params['dimensions'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v as num).toDouble())) ?? {}),
+        );
+      case 'CALCULATE_VOLUME':
+        return _math.calculateVolume(
+          shape: params['shape'] as String? ?? '',
+          dimensions: Map<String, double>.from((params['dimensions'] as Map?)?.map((k, v) => MapEntry(k.toString(), (v as num).toDouble())) ?? {}),
+        );
+      case 'GCD':
+        return _math.gcd((params['a'] as num?)?.toInt() ?? 0, (params['b'] as num?)?.toInt() ?? 0);
+      case 'LCM':
+        return _math.lcm((params['a'] as num?)?.toInt() ?? 0, (params['b'] as num?)?.toInt() ?? 0);
+      case 'POWER':
+        return _math.power((params['base'] as num?)?.toDouble() ?? 0, (params['exponent'] as num?)?.toDouble() ?? 0);
+      case 'SQRT':
+        return _math.squareRoot((params['value'] as num?)?.toDouble() ?? 0);
+      case 'PERCENTAGE':
+        return _math.percentage(value: (params['value'] as num?)?.toDouble() ?? 0, total: (params['total'] as num?)?.toDouble() ?? 0);
+      case 'PERCENT_OF':
+        return _math.percentOf(percent: (params['percent'] as num?)?.toDouble() ?? 0, of: (params['of'] as num?)?.toDouble() ?? 0);
+
+      // ── TEXT TOOLS ──
+      case 'COUNT_WORDS':
+        return _text.countWords(params['text'] as String? ?? '');
+      case 'COUNT_CHARACTERS':
+        return _text.countCharacters(params['text'] as String? ?? '');
+      case 'TEXT_TO_UPPER':
+        return _text.toUpperCase(params['text'] as String? ?? '');
+      case 'TEXT_TO_LOWER':
+        return _text.toLowerCase(params['text'] as String? ?? '');
+      case 'REVERSE_TEXT':
+        return _text.reverseText(params['text'] as String? ?? '');
+      case 'ENCODE_BASE64':
+        return _text.encodeBase64(params['text'] as String? ?? '');
+      case 'DECODE_BASE64':
+        return _text.decodeBase64(params['text'] as String? ?? '');
+      case 'GENERATE_PASSWORD':
+        return _text.generatePassword(length: (params['length'] as num?)?.toInt() ?? 16);
+      case 'FORMAT_NUMBER':
+        return _text.formatNumber((params['number'] as num?)?.toDouble() ?? 0);
+      case 'GENERATE_UUID':
+        return _text.generateUUID();
+      case 'CAPITALIZE_WORDS':
+        return _text.capitalizeWords(params['text'] as String? ?? '');
+      case 'EXTRACT_NUMBERS':
+        return _text.extractNumbers(params['text'] as String? ?? '');
+      case 'EXTRACT_EMAILS':
+        return _text.extractEmails(params['text'] as String? ?? '');
+      case 'EXTRACT_PHONES':
+        return _text.extractPhones(params['text'] as String? ?? '');
+      case 'SLUGIFY':
+        return _text.slugify(params['text'] as String? ?? '');
+      case 'TEXT_TO_MORSE':
+        return _text.textToMorse(params['text'] as String? ?? '');
+      case 'MORSE_TO_TEXT':
+        return _text.morseToText(params['text'] as String? ?? '');
+      case 'ROMAN_TO_NUMBER':
+        return _text.romanToNumber(params['text'] as String? ?? '');
+      case 'NUMBER_TO_ROMAN':
+        return _text.numberToRoman((params['number'] as num?)?.toInt() ?? 0);
+      case 'HASH_TEXT':
+        return _text.hashText(params['text'] as String? ?? '');
+      case 'REPEAT_TEXT':
+        return _text.repeatText(params['text'] as String? ?? '', (params['count'] as num?)?.toInt() ?? 2);
+      case 'REMOVE_SPACES':
+        return _text.removeSpaces(params['text'] as String? ?? '');
+
+      // ── DATE TOOLS ──
+      case 'COUNTDOWN':
+        return _date.countdown(targetDate: params['date'] as String? ?? '', eventName: params['event'] as String?);
+      case 'WORLD_CLOCK':
+        return _date.worldClock(params['city'] as String? ?? '');
+      case 'DATE_DIFFERENCE':
+        return _date.dateDifference(date1: params['date1'] as String? ?? '', date2: params['date2'] as String? ?? '');
+      case 'ADD_DAYS':
+        return _date.addDays(date: params['date'] as String? ?? '', days: (params['days'] as num?)?.toInt() ?? 0);
+      case 'GET_ZODIAC':
+        return _date.getZodiac(params['date'] as String? ?? '');
+      case 'GET_CALENDAR_WEEK':
+        return _date.getCalendarWeek();
+      case 'CALCULATE_AGE':
+        return _date.calculateAge(params['birthDate'] as String? ?? '');
+      case 'IS_LEAP_YEAR':
+        return _date.isLeapYear((params['year'] as num?)?.toInt() ?? DateTime.now().year);
+      case 'DAYS_IN_MONTH':
+        return _date.daysInMonth((params['month'] as num?)?.toInt() ?? DateTime.now().month, year: (params['year'] as num?)?.toInt());
+      case 'GET_UNIX_TIMESTAMP':
+        return _date.getUnixTimestamp();
+      case 'FROM_UNIX_TIMESTAMP':
+        return _date.fromUnixTimestamp((params['timestamp'] as num?)?.toInt() ?? 0);
+      case 'GET_HIJRI_DATE':
+        return _date.getHijriDate();
+      case 'GET_PRAYER_TIMES':
+        return _date.getPrayerTimes(params['city'] as String? ?? '');
+
+      // ── FUN CONTENT ──
+      case 'GET_QUOTE':
+        return _fun.getQuote();
+      case 'GET_JOKE':
+        return _fun.getJoke();
+      case 'GET_FACT':
+        return _fun.getFact();
+      case 'GET_MOTIVATION':
+        return _fun.getMotivation();
+      case 'GET_PROVERB':
+        return _fun.getProverb();
+      case 'GET_RIDDLE':
+        return _fun.getRiddle();
+
+      // ── FINANCE TOOLS ──
+      case 'CALCULATE_LOAN':
+        return _finance.calculateLoan(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          annualRate: (params['rate'] as num?)?.toDouble() ?? 0,
+          months: (params['months'] as num?)?.toInt() ?? 12,
+        );
+      case 'CALCULATE_TIP':
+        return _finance.calculateTip(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          tipPercent: (params['percent'] as num?)?.toDouble() ?? 15,
+          splitCount: (params['split'] as num?)?.toInt() ?? 1,
+        );
+      case 'CALCULATE_DISCOUNT':
+        return _finance.calculateDiscount(
+          price: (params['price'] as num?)?.toDouble() ?? 0,
+          discount: (params['discount'] as num?)?.toDouble() ?? 0,
+        );
+      case 'CALCULATE_TAX':
+        return _finance.calculateTax(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          taxRate: (params['rate'] as num?)?.toDouble() ?? 12,
+        );
+      case 'CALCULATE_INTEREST':
+        return _finance.calculateInterest(
+          principal: (params['principal'] as num?)?.toDouble() ?? 0,
+          annualRate: (params['rate'] as num?)?.toDouble() ?? 0,
+          years: (params['years'] as num?)?.toInt() ?? 1,
+        );
+      case 'CALCULATE_SAVINGS':
+        return _finance.calculateSavings(
+          monthlyAmount: (params['monthly'] as num?)?.toDouble() ?? 0,
+          annualRate: (params['rate'] as num?)?.toDouble() ?? 0,
+          months: (params['months'] as num?)?.toInt() ?? 12,
+        );
+      case 'CALCULATE_PROFIT':
+        return _finance.calculateProfit(
+          cost: (params['cost'] as num?)?.toDouble() ?? 0,
+          revenue: (params['revenue'] as num?)?.toDouble() ?? 0,
+        );
+      case 'CALCULATE_INFLATION':
+        return _finance.calculateInflation(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          inflationRate: (params['rate'] as num?)?.toDouble() ?? 10,
+          years: (params['years'] as num?)?.toInt() ?? 5,
+        );
+      case 'CONVERT_CURRENCY':
+        return _finance.convertCurrency(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          from: params['from'] as String? ?? 'USD',
+          to: params['to'] as String? ?? 'UZS',
+        );
+      case 'SET_BUDGET':
+        return _finance.setBudget(
+          amount: (params['amount'] as num?)?.toDouble() ?? 0,
+          category: params['category'] as String? ?? 'umumiy',
+        );
+      case 'GET_BUDGET':
+        return _finance.getBudget();
+      case 'CALCULATE_MORTGAGE':
+        return _finance.calculateMortgage(
+          price: (params['price'] as num?)?.toDouble() ?? 0,
+          downPayment: (params['downPayment'] as num?)?.toDouble() ?? 0,
+          annualRate: (params['rate'] as num?)?.toDouble() ?? 0,
+          years: (params['years'] as num?)?.toInt() ?? 20,
+        );
+      case 'CALCULATE_SALARY':
+        return _finance.calculateNetSalary(
+          grossSalary: (params['salary'] as num?)?.toDouble() ?? 0,
+          taxRate: (params['taxRate'] as num?)?.toDouble() ?? 12,
+        );
+
+      // ── DEVICE CONTROL ──
+      case 'OPEN_WIFI':
+        return _device.openWifiSettings();
+      case 'OPEN_BLUETOOTH':
+        return _device.openBluetoothSettings();
+      case 'OPEN_DND':
+        return _device.openDndSettings();
+      case 'OPEN_AIRPLANE':
+        return _device.openAirplaneSettings();
+      case 'OPEN_BRIGHTNESS':
+        return _device.openBrightnessSettings();
+      case 'OPEN_NOTIFICATION_SETTINGS':
+        return _device.openNotificationSettings();
+      case 'OPEN_BATTERY_SETTINGS':
+        return _device.openBatterySettings();
+      case 'OPEN_STORAGE_SETTINGS':
+        return _device.openStorageSettings();
+      case 'OPEN_NFC':
+        return _device.openNfcSettings();
+      case 'OPEN_DEVELOPER_SETTINGS':
+        return _device.openDeveloperSettings();
+      case 'OPEN_ACCESSIBILITY':
+        return _device.openAccessibilitySettings();
+      case 'OPEN_DATETIME_SETTINGS':
+        return _device.openDateTimeSettings();
+      case 'OPEN_ACCOUNT_SETTINGS':
+        return _device.openAccountSettings();
+      case 'OPEN_LOCATION_SETTINGS':
+        return _device.openLocationSettings();
+      case 'OPEN_SECURITY_SETTINGS':
+        return _device.openSecuritySettings();
+      case 'OPEN_LANGUAGE_SETTINGS':
+        return _device.openLanguageSettings();
+      case 'OPEN_SOUND_SETTINGS':
+        return _device.openSoundSettings();
+      case 'OPEN_HOTSPOT':
+        return _device.openHotspotSettings();
+      case 'OPEN_VPN':
+        return _device.openVpnSettings();
+      case 'OPEN_DATA_USAGE':
+        return _device.openDataUsageSettings();
+      case 'OPEN_APP_INFO':
+        return _device.openAppInfo(params['package'] as String? ?? '');
+      case 'UNINSTALL_APP':
+        return _device.uninstallApp(params['package'] as String? ?? '');
+      case 'COPY_TO_CLIPBOARD':
+        return _device.copyToClipboard(params['text'] as String? ?? '');
+      case 'READ_CLIPBOARD':
+        return _device.readClipboard();
+      case 'DIAL_USSD':
+        return _device.dialUssd(params['code'] as String? ?? '');
+      case 'OPEN_PLAY_STORE':
+        return _device.openPlayStore(params['package'] as String? ?? '');
+      case 'SPEED_TEST':
+        return _device.speedTest();
+
+      // ── LOCATION SEARCH ──
+      case 'FIND_NEARBY':
+        return _location.findNearby(params['type'] as String? ?? '');
+      case 'FIND_RESTAURANT':
+        return _location.findRestaurant(query: params['query'] as String?);
+      case 'FIND_CAFE':
+        return _location.findCafe();
+      case 'FIND_PHARMACY':
+        return _location.findPharmacy();
+      case 'FIND_ATM':
+        return _location.findATM();
+      case 'FIND_HOSPITAL':
+        return _location.findHospital();
+      case 'FIND_HOTEL':
+        return _location.findHotel(query: params['query'] as String?);
+      case 'FIND_GAS_STATION':
+        return _location.findGasStation();
+      case 'FIND_PARKING':
+        return _location.findParking();
+      case 'FIND_SUPERMARKET':
+        return _location.findSupermarket();
+      case 'FIND_MOSQUE':
+        return _location.findMosque();
+      case 'FIND_SCHOOL':
+        return _location.findSchool();
+      case 'FIND_BANK':
+        return _location.findBank();
+      case 'FIND_POLICE':
+        return _location.findPolice();
+      case 'FIND_GYM':
+        return _location.findGym();
+      case 'FIND_PARK':
+        return _location.findPark();
+      case 'FIND_CAR_WASH':
+        return _location.findCarWash();
+      case 'FIND_BEAUTY':
+        return _location.findBeauty();
+      case 'FIND_DENTIST':
+        return _location.findDentist();
+      case 'FIND_LIBRARY':
+        return _location.findLibrary();
+      case 'SEARCH_MOVIE':
+        return _location.searchMovie(params['query'] as String? ?? '');
+      case 'SEARCH_BOOK':
+        return _location.searchBook(params['query'] as String? ?? '');
+      case 'SEARCH_RECIPE':
+        return _location.searchRecipe(params['query'] as String? ?? '');
+      case 'SEARCH_IMAGE':
+        return _location.searchImage(params['query'] as String? ?? '');
+      case 'SEARCH_FLIGHT':
+        return _location.searchFlight(from: params['from'] as String?, to: params['to'] as String?);
+      case 'OPEN_TAXI':
+        return _location.openTaxi(service: params['service'] as String?);
+      case 'OPEN_PAYME':
+        return _location.openPayme();
+      case 'OPEN_CLICK':
+        return _location.openClick();
+      case 'OPEN_UZUM':
+        return _location.openUzum();
+      case 'OPEN_MYID':
+        return _location.openMyId();
+
       default:
         return ActionResult(
           success: false,

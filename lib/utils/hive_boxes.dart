@@ -1,4 +1,5 @@
 import '../services/analytics_service.dart';
+import '../services/health_tracker_service.dart';
 import '../services/memory_service.dart';
 import '../services/reminder_service.dart';
 
@@ -14,4 +15,9 @@ const allHiveBoxNames = [
   AnalyticsService.boxName,
   ReminderService.boxName,
   'notes',
+  'todos',
+  'shopping',
+  'goals',
+  HealthTrackerService.boxName,
+  'budget',
 ];
