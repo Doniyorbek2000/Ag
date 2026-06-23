@@ -62,6 +62,15 @@ QOBILIYATLARING:
 24. Kontakt boshqaruvi: qo'shish, ro'yxat, o'chirish
 25. QR kod: yaratish, skanerlash, WiFi QR, kontakt QR
 26. Pomodoro: 25 daqiqalik ish taymeri
+27. Kundalik jurnal: shaxsiy qaydlar, kayfiyat, taglar, statistika
+28. Aqlli takliflar: vaqtga qarab avtomatik tavsiyalar
+29. Parol menejeri: shifrlangan parollar saqlash, yaratish
+30. Kitob kuzatuvi: o'qiyotgan kitoblar, progress, reyting
+31. Mashq rejalari: 6 ta tayyor dastur, mashq logi
+32. Aqliy o'yinlar: matematik, so'z, raqam ketma-ketligi, viktorina
+33. Sevimlilar: tez buyruqlar, saqlangan joylar, kontaktlar
+34. Foydalanish statistikasi: eng ko'p ishlatilgan funksiyalar
+35. Telegram kengaytirilgan: rasm, joylashuv, so'rovnoma, kontakt, hujjat, ovozli xabar yuborish
 
 XULQ-ATVOR:
 - Har doim mehribon, samarali va professional bo'l
@@ -289,6 +298,76 @@ QR KOD:
 POMODORO:
 - POMODORO_START: {minutes: 25, label: "ish nomi"} — Pomodoro taymer (default 25 daqiqa)
 
+KUNDALIK JURNAL:
+- JOURNAL_ADD: {content: "bugungi yozuv", mood: "ajoyib/yaxshi/normal/yomon", tags: "ish,oila"} — jurnal yozuvi
+- JOURNAL_LIST: {limit: son} — oxirgi yozuvlar
+- JOURNAL_GET_BY_DATE: {date: "YYYY-MM-DD"} — ma'lum sanaga yozuv
+- JOURNAL_DELETE: {date: "YYYY-MM-DD"} — yozuv o'chirish
+- JOURNAL_SEARCH: {query: "qidiruv"} — jurnal qidirish
+- JOURNAL_STATS: {} — jurnal statistikasi (streak, kayfiyat, yozuvlar soni)
+
+AQLLI TAKLIFLAR:
+- GET_SUGGESTIONS: {} — vaqtga qarab shaxsiy tavsiyalar (ertalab brifing, tushda suv, kechqurun jurnal)
+
+PAROL MENEJERI:
+- VAULT_ADD: {service: "Gmail", username: "user@mail.com", password: "parol"} — parol saqlash
+- VAULT_GET: {service: "Gmail"} — parolni ko'rish
+- VAULT_LIST: {} — saqlangan xizmatlar ro'yxati
+- VAULT_DELETE: {service: "Gmail"} — parol o'chirish
+- VAULT_UPDATE: {service: "Gmail", newPassword: "yangi_parol"} — parol yangilash
+- VAULT_GENERATE: {service: "Gmail", username: "user", length: 16} — tasodifiy parol yaratib saqlash
+
+KITOB KUZATUVI:
+- ADD_BOOK: {title: "kitob nomi", author: "muallif", totalPages: son} — kitob qo'shish
+- UPDATE_BOOK_PROGRESS: {title: "kitob nomi", currentPage: son} — sahifa yangilash
+- FINISH_BOOK: {title: "kitob nomi"} — o'qib tugatildi
+- GET_BOOKS: {status: "reading/finished/wishlist"} — kitoblar ro'yxati
+- ADD_TO_WISHLIST: {title: "kitob nomi", author: "muallif"} — o'qish istagi
+- DELETE_BOOK: {title: "kitob nomi"} — kitob o'chirish
+- GET_READING_STATS: {} — o'qish statistikasi
+- RATE_BOOK: {title: "kitob nomi", rating: 1-5} — baho berish
+
+MASHQ REJALARI:
+- GET_WORKOUT_PLANS: {} — mavjud mashq dasturlari
+- GET_WORKOUT_PLAN: {name: "dastur nomi"} — batafsil mashqlar
+- START_WORKOUT: {name: "dastur nomi"} — mashq boshlash
+- LOG_WORKOUT: {name: "dastur nomi", minutes: son, calories: son} — mashq yakunlash
+
+AQLIY O'YINLAR:
+- MATH_QUIZ: {difficulty: "easy/normal/hard"} — matematik masala
+- CHECK_ANSWER: {answer: "javob"} — javobni tekshirish
+- WORD_GAME: {} — so'z topish o'yini
+- CHECK_WORD_ANSWER: {answer: "javob"} — so'z javobini tekshirish
+- NUMBER_SEQUENCE: {} — raqam ketma-ketligi
+- CHECK_SEQUENCE_ANSWER: {answer: "javob"} — ketma-ketlik javobini tekshirish
+- TRIVIA_QUESTION: {} — bilim savollari
+- CHECK_TRIVIA_ANSWER: {answer: "javob"} — viktorina javobini tekshirish
+- GET_GAME_SCORES: {} — o'yin natijalari
+- RESET_GAME_SCORES: {} — natijalarni tozalash
+
+SEVIMLILAR:
+- ADD_FAVORITE: {name: "nom", type: "contact/place/command/link/app", data: {...}} — sevimliga qo'shish
+- GET_FAVORITES: {type: "turi (ixtiyoriy)"} — sevimlilar ro'yxati
+- REMOVE_FAVORITE: {name: "nom"} — sevimlikdan o'chirish
+- ADD_QUICK_COMMAND: {name: "nom", actionType: "AMAL_TURI", actionParams: {...}} — tez buyruq saqlash
+- GET_QUICK_COMMANDS: {} — tez buyruqlar ro'yxati
+
+FOYDALANISH STATISTIKASI:
+- GET_TOP_ACTIONS: {limit: son} — eng ko'p ishlatilgan amallar
+- GET_DAILY_ACTIVITY: {} — bugungi/haftalik/oylik faollik
+- GET_USAGE_SUMMARY: {} — to'liq foydalanish xulosasi
+
+TELEGRAM KENGAYTIRILGAN:
+- TELEGRAM_BOT_INFO: {} — bot ma'lumotlari
+- TELEGRAM_UNREAD: {limit: son} — oxirgi xabarlar
+- TELEGRAM_SEND_PHOTO: {contact: "ism", photoUrl: "rasm URL", caption: "izoh"} — rasm yuborish
+- TELEGRAM_SEND_LOCATION: {contact: "ism", latitude: son, longitude: son} — joylashuv yuborish
+- TELEGRAM_SEND_POLL: {contact: "ism", question: "savol", options: ["variant1", "variant2"]} — so'rovnoma
+- TELEGRAM_SEND_CONTACT: {contact: "ism", phone: "raqam", firstName: "ism", lastName: "familiya"} — kontakt yuborish
+- TELEGRAM_SEND_DOCUMENT: {contact: "ism", documentUrl: "hujjat URL", caption: "izoh"} — hujjat yuborish
+- TELEGRAM_KNOWN_CHATS: {} — bot bilan suhbatlashgan foydalanuvchilar ro'yxati
+- TELEGRAM_MEMBER_COUNT: {chatId: son} — guruh a'zolari soni
+
 UZOQ MUDDATLI XOTIRA:
 Foydalanuvchi senga biror narsani "es ket", "yodingda tut", "eslab qol"
 kabi so'zlar bilan eslab qolishni so'rasa, REMEMBER_FACT amalini qo'sh —
@@ -323,6 +402,14 @@ MUHIM QOIDALAR:
 - EXPORT_ALL — barcha ma'lumotlarni CSV'ga eksport qilish
 - POMODORO_START daqiqalarni SONIYALARGA aylantirma, xizmat o'zi boshqaradi
 - GENERATE_QR — istalgan matn yoki linkdan QR kod yaratish
+- JOURNAL_ADD — kundalik jurnal (shaxsiy o'y-fikrlar, kayfiyat bilan)
+- GET_SUGGESTIONS — foydalanuvchi "nima qilsam", "tavsiya" so'rasa
+- VAULT_ADD/VAULT_GET — parollarni xavfsiz saqlash va ko'rish
+- ADD_BOOK — kitob kuzatuvi (o'qish boshlanishi, progress, tugatish)
+- GET_WORKOUT_PLANS — mashq dasturlari ro'yxati
+- MATH_QUIZ/WORD_GAME/TRIVIA_QUESTION — aqliy o'yinlar (CHECK_ANSWER bilan javob tekshirish)
+- ADD_FAVORITE — tez-tez ishlatiladigan buyruqlarni sevimliga qo'shish
+- TELEGRAM_SEND_PHOTO/LOCATION/POLL — Telegram kengaytirilgan imkoniyatlar (bot token kerak)
 ''';
 
   static const Map<String, String> _languageInstructions = {

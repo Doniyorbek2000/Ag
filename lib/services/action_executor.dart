@@ -30,6 +30,14 @@ import 'daily_briefing_service.dart';
 import 'data_export_service.dart';
 import 'contact_manager_service.dart';
 import 'qr_service.dart';
+import 'journal_service.dart';
+import 'smart_suggestion_service.dart';
+import 'password_vault_service.dart';
+import 'book_tracker_service.dart';
+import 'workout_plan_service.dart';
+import 'brain_game_service.dart';
+import 'favorites_service.dart';
+import 'usage_stats_service.dart';
 
 class ActionExecutor {
   final Logger _logger = Logger();
@@ -48,6 +56,14 @@ class ActionExecutor {
   final DataExportService _export = DataExportService();
   final ContactManagerService _contact = ContactManagerService();
   final QrService _qr = QrService();
+  final JournalService _journal = JournalService();
+  final SmartSuggestionService _suggestions = SmartSuggestionService();
+  final PasswordVaultService _vault = PasswordVaultService();
+  final BookTrackerService _books = BookTrackerService();
+  final WorkoutPlanService _workout = WorkoutPlanService();
+  final BrainGameService _brain = BrainGameService();
+  final FavoritesService _favorites = FavoritesService();
+  final UsageStatsService _usageStats = UsageStatsService();
 
   static final ActionExecutor _instance = ActionExecutor._internal();
   factory ActionExecutor() => _instance;
@@ -647,6 +663,197 @@ class ActionExecutor {
           pomodoroMinutes * 60,
           params['label'] as String? ?? 'Pomodoro',
         );
+
+      // ── JOURNAL ──
+      case 'JOURNAL_ADD':
+        return _journal.addEntry(
+          content: params['content'] as String? ?? '',
+          mood: params['mood'] as String?,
+          tags: params['tags'] as String?,
+        );
+      case 'JOURNAL_LIST':
+        return _journal.getEntries(limit: (params['limit'] as num?)?.toInt() ?? 10);
+      case 'JOURNAL_GET_BY_DATE':
+        return _journal.getEntryByDate(params['date'] as String? ?? '');
+      case 'JOURNAL_DELETE':
+        return _journal.deleteEntry(params['date'] as String? ?? '');
+      case 'JOURNAL_SEARCH':
+        return _journal.searchJournal(params['query'] as String? ?? '');
+      case 'JOURNAL_STATS':
+        return _journal.getJournalStats();
+
+      // ── SMART SUGGESTIONS ──
+      case 'GET_SUGGESTIONS':
+        return _suggestions.getSuggestions();
+
+      // ── PASSWORD VAULT ──
+      case 'VAULT_ADD':
+        return _vault.addPassword(
+          service: params['service'] as String? ?? '',
+          username: params['username'] as String? ?? '',
+          password: params['password'] as String? ?? '',
+        );
+      case 'VAULT_GET':
+        return _vault.getPassword(params['service'] as String? ?? '');
+      case 'VAULT_LIST':
+        return _vault.listPasswords();
+      case 'VAULT_DELETE':
+        return _vault.deletePassword(params['service'] as String? ?? '');
+      case 'VAULT_UPDATE':
+        return _vault.updatePassword(
+          service: params['service'] as String? ?? '',
+          newPassword: params['newPassword'] as String? ?? '',
+        );
+      case 'VAULT_GENERATE':
+        return _vault.generateAndSave(
+          service: params['service'] as String? ?? '',
+          username: params['username'] as String? ?? '',
+          length: (params['length'] as num?)?.toInt() ?? 16,
+        );
+
+      // ── BOOK TRACKER ──
+      case 'ADD_BOOK':
+        return _books.addBook(
+          title: params['title'] as String? ?? '',
+          author: params['author'] as String?,
+          totalPages: (params['totalPages'] as num?)?.toInt(),
+        );
+      case 'UPDATE_BOOK_PROGRESS':
+        return _books.updateProgress(
+          title: params['title'] as String? ?? '',
+          currentPage: (params['currentPage'] as num?)?.toInt() ?? 0,
+        );
+      case 'FINISH_BOOK':
+        return _books.finishBook(params['title'] as String? ?? '');
+      case 'GET_BOOKS':
+        return _books.getBooks(status: params['status'] as String?);
+      case 'ADD_TO_WISHLIST':
+        return _books.addToWishlist(
+          title: params['title'] as String? ?? '',
+          author: params['author'] as String?,
+        );
+      case 'DELETE_BOOK':
+        return _books.deleteBook(params['title'] as String? ?? '');
+      case 'GET_READING_STATS':
+        return _books.getReadingStats();
+      case 'RATE_BOOK':
+        return _books.rateBook(
+          title: params['title'] as String? ?? '',
+          rating: (params['rating'] as num?)?.toInt() ?? 5,
+        );
+
+      // ── WORKOUT PLANS ──
+      case 'GET_WORKOUT_PLANS':
+        return _workout.getPlans();
+      case 'GET_WORKOUT_PLAN':
+        return _workout.getPlan(params['name'] as String? ?? '');
+      case 'START_WORKOUT':
+        return _workout.startWorkout(params['name'] as String? ?? '');
+      case 'LOG_WORKOUT':
+        return _workout.logWorkout(
+          planName: params['name'] as String? ?? '',
+          minutes: (params['minutes'] as num?)?.toInt() ?? 30,
+          caloriesBurned: (params['calories'] as num?)?.toInt(),
+        );
+
+      // ── BRAIN GAMES ──
+      case 'MATH_QUIZ':
+        return _brain.getMathQuiz(difficulty: params['difficulty'] as String? ?? 'normal');
+      case 'CHECK_ANSWER':
+        return _brain.checkAnswer(answer: params['answer'] as String? ?? '');
+      case 'WORD_GAME':
+        return _brain.getWordGame();
+      case 'CHECK_WORD_ANSWER':
+        return _brain.checkWordAnswer(answer: params['answer'] as String? ?? '');
+      case 'NUMBER_SEQUENCE':
+        return _brain.getNumberSequence();
+      case 'CHECK_SEQUENCE_ANSWER':
+        return _brain.checkSequenceAnswer(answer: params['answer'] as String? ?? '');
+      case 'TRIVIA_QUESTION':
+        return _brain.getTriviaQuestion();
+      case 'CHECK_TRIVIA_ANSWER':
+        return _brain.checkTriviaAnswer(answer: params['answer'] as String? ?? '');
+      case 'GET_GAME_SCORES':
+        return _brain.getScores();
+      case 'RESET_GAME_SCORES':
+        return _brain.resetScores();
+
+      // ── FAVORITES ──
+      case 'ADD_FAVORITE':
+        return _favorites.addFavorite(
+          name: params['name'] as String? ?? '',
+          type: params['type'] as String? ?? 'command',
+          data: Map<String, dynamic>.from(params['data'] as Map? ?? {}),
+        );
+      case 'GET_FAVORITES':
+        return _favorites.getFavorites(type: params['type'] as String?);
+      case 'REMOVE_FAVORITE':
+        return _favorites.removeFavorite(params['name'] as String? ?? '');
+      case 'EXECUTE_FAVORITE':
+        return _favorites.executeFavorite(params['name'] as String? ?? '');
+      case 'ADD_QUICK_COMMAND':
+        return _favorites.addQuickCommand(
+          name: params['name'] as String? ?? '',
+          actionType: params['actionType'] as String? ?? '',
+          params: Map<String, dynamic>.from(params['actionParams'] as Map? ?? {}),
+        );
+      case 'GET_QUICK_COMMANDS':
+        return _favorites.getQuickCommands();
+
+      // ── USAGE STATS ──
+      case 'GET_TOP_ACTIONS':
+        return _usageStats.getTopActions(limit: (params['limit'] as num?)?.toInt() ?? 10);
+      case 'GET_DAILY_ACTIVITY':
+        return _usageStats.getDailyActivity();
+      case 'GET_USAGE_SUMMARY':
+        return _usageStats.getUsageSummary();
+      case 'RESET_USAGE_STATS':
+        return _usageStats.resetStats();
+
+      // ── TELEGRAM EXPANDED ──
+      case 'TELEGRAM_BOT_INFO':
+        return TelegramService().getMyBotInfo();
+      case 'TELEGRAM_UNREAD':
+        return TelegramService().getUnreadMessages(limit: (params['limit'] as num?)?.toInt() ?? 10);
+      case 'TELEGRAM_SEND_PHOTO':
+        final chats = await TelegramService().fetchKnownChats();
+        final chatId = _resolveTelegramChatId(chats, params['contact'] as String? ?? '');
+        if (chatId == null) return ActionResult(success: false, message: '"${params['contact']}" kontakti topilmadi');
+        return TelegramService().sendPhoto(chatId: chatId, photoUrl: params['photoUrl'] as String? ?? '', caption: params['caption'] as String?);
+      case 'TELEGRAM_SEND_LOCATION':
+        final chats2 = await TelegramService().fetchKnownChats();
+        final chatId2 = _resolveTelegramChatId(chats2, params['contact'] as String? ?? '');
+        if (chatId2 == null) return ActionResult(success: false, message: '"${params['contact']}" kontakti topilmadi');
+        return TelegramService().sendLocation(
+          chatId: chatId2,
+          latitude: (params['latitude'] as num?)?.toDouble() ?? 0,
+          longitude: (params['longitude'] as num?)?.toDouble() ?? 0,
+        );
+      case 'TELEGRAM_SEND_POLL':
+        final chats3 = await TelegramService().fetchKnownChats();
+        final chatId3 = _resolveTelegramChatId(chats3, params['contact'] as String? ?? '');
+        if (chatId3 == null) return ActionResult(success: false, message: '"${params['contact']}" kontakti topilmadi');
+        final options = (params['options'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        return TelegramService().sendPoll(chatId: chatId3, question: params['question'] as String? ?? '', options: options);
+      case 'TELEGRAM_SEND_CONTACT':
+        final chats4 = await TelegramService().fetchKnownChats();
+        final chatId4 = _resolveTelegramChatId(chats4, params['contact'] as String? ?? '');
+        if (chatId4 == null) return ActionResult(success: false, message: '"${params['contact']}" kontakti topilmadi');
+        return TelegramService().sendContact(
+          chatId: chatId4,
+          phone: params['phone'] as String? ?? '',
+          firstName: params['firstName'] as String? ?? '',
+          lastName: params['lastName'] as String?,
+        );
+      case 'TELEGRAM_SEND_DOCUMENT':
+        final chats5 = await TelegramService().fetchKnownChats();
+        final chatId5 = _resolveTelegramChatId(chats5, params['contact'] as String? ?? '');
+        if (chatId5 == null) return ActionResult(success: false, message: '"${params['contact']}" kontakti topilmadi');
+        return TelegramService().sendDocument(chatId: chatId5, documentUrl: params['documentUrl'] as String? ?? '', caption: params['caption'] as String?);
+      case 'TELEGRAM_KNOWN_CHATS':
+        return TelegramService().getKnownChatsList();
+      case 'TELEGRAM_MEMBER_COUNT':
+        return TelegramService().getChatMemberCount((params['chatId'] as num?)?.toInt() ?? 0);
 
       default:
         return ActionResult(
@@ -1509,6 +1716,11 @@ class ActionExecutor {
     } catch (e) {
       return ActionResult(success: false, message: 'Qurilma ma\'lumotlarini olishda xato: $e');
     }
+  }
+
+  int? _resolveTelegramChatId(Map<String, int> chats, String contact) {
+    final key = contact.toLowerCase().replaceAll('@', '').trim();
+    return chats[key];
   }
 }
 
